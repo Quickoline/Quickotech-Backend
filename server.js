@@ -181,6 +181,15 @@ mongoose.connect(process.env.MONGODB_URI)
             res.sendFile(path.join(__dirname, './src/api/v1/chat/test/chat.html'));
         });
 
+        // Test route
+        app.get('/', (req, res) => {
+            res.json({
+                message: 'Hello Quicko! Server is running successfully.',
+                timestamp: new Date().toISOString(),
+                environment: process.env.NODE_ENV || 'development'
+            });
+        });
+
         // 404 handler
         app.use((req, res) => {
             res.status(404).json({
