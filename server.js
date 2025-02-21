@@ -61,11 +61,11 @@ const swaggerOptions = {
         },
         servers: [
             {
-                url: 'https://quickotech-backend.vercel.app',
+                url: 'https://quickotech-backend.onrender.com',
                 description: 'Production server'
             },
             {
-                url: 'http://localhost:3000',
+                url: 'http://localhost:10000',
                 description: 'Development server'
             }
         ],
@@ -158,18 +158,14 @@ mongoose.connect(process.env.MONGODB_URI)
             });
         });
 
-        try {
-            if (process.env.NODE_ENV !== 'production') {
-                const PORT = process.env.PORT || 3000;
-                app.listen(PORT, () => {
-                    console.log(`Server running on port ${PORT}`);
-                    console.log(`API Documentation available at http://localhost:${PORT}/api-docs`);
-                });
-            }
-        } catch (error) {
-            console.error('Server startup error:', error);
-            process.exit(1);
-        }
+        // Start the server
+        const port = process.env.PORT || 10000;
+        const host = '0.0.0.0';
+        
+        server.listen(port, host, () => {
+            console.log(`Server running on http://${host}:${port}`);
+            console.log(`API Documentation available at http://${host}:${port}/api-docs`);
+        });
     })
     .catch(err => {
         console.error('MongoDB connection error:', err);
