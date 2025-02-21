@@ -13,11 +13,6 @@ class OrderService {
             throw new Error('Service not found or inactive');
         }
 
-        // Remove strict validation of required documents
-        if (!documents || documents.length === 0) {
-            throw new Error('At least one document is required');
-        }
-
         return service;
     }
 
@@ -30,43 +25,45 @@ class OrderService {
             // Validate service
             const service = await this.validateServiceAndDocuments(serviceId, documents);
 
-            // Process and upload documents
-            const uploadedDocs = await Promise.all(
-                documents.map(async (doc, index) => {
-                    try {
-                        // Find the corresponding file
-                        const file = files.find(f => f.fieldname === `documents[${index}][file]`);
-                        if (!file) {
-                            throw new Error(`File not found for document: ${doc.documentName}`);
-                        }
+            // Process and upload documents if present
+            let uploadedDocs = [];
+            if (documents && documents.length > 0) {
+                uploadedDocs = await Promise.all(
+                    documents.map(async (doc, index) => {
+                        try {
+                            // Find the corresponding file
+                            const file = files?.find(f => f.fieldname === `documents[${index}][file]`);
+                            let docData = {
+                                documentName: doc.documentName,
+                                ocrData: doc.ocrData || {}
+                            };
 
-                        // Upload to S3
-                        const uploadResult = await uploadToS3(file);
-
-                        // Parse OCR data
-                        let parsedOcrData = doc.ocrData;
-                        if (typeof doc.ocrData === 'string') {
-                            try {
-                                parsedOcrData = JSON.parse(doc.ocrData);
-                            } catch (e) {
-                                console.warn('Failed to parse ocrData:', e);
-                                parsedOcrData = {};
+                            if (file) {
+                                // If using S3
+                                if (uploadToS3) {
+                                    const uploadResult = await uploadToS3(file);
+                                    docData.s3Url = uploadResult.url;
+                                    docData.s3Key = uploadResult.key;
+                                }
+                                // If using P2P (implement your P2P upload logic here)
+                                // const p2pResult = await uploadToP2P(file);
+                                // docData.p2pHash = p2pResult.hash;
+                                // docData.p2pUrl = p2pResult.url;
                             }
+
+                            return docData;
+                        } catch (error) {
+                            console.warn(`Warning: Failed to process document ${doc.documentName}: ${error.message}`);
+                            return {
+                                documentName: doc.documentName,
+                                ocrData: doc.ocrData || {}
+                            };
                         }
+                    })
+                );
+            }
 
-                        return {
-                            documentName: doc.documentName,
-                            s3Url: uploadResult.url,
-                            s3Key: uploadResult.key,
-                            ocrData: parsedOcrData
-                        };
-                    } catch (error) {
-                        throw new Error(`Failed to process document ${doc.documentName}: ${error.message}`);
-                    }
-                })
-            );
-
-            console.log('Documents uploaded successfully:', uploadedDocs);
+            console.log('Documents processed successfully:', uploadedDocs);
             
             // Ensure additionalFields is properly formatted
             const processedAdditionalFields = Array.isArray(additionalFields) 
@@ -76,8 +73,6 @@ class OrderService {
                     fieldType: field.fieldType || 'text'
                 }))
                 : [];
-
-            console.log('Processed additional fields:', processedAdditionalFields);
 
             // Create review order
             const reviewOrder = new Review({
@@ -90,8 +85,6 @@ class OrderService {
                 approveStatus: (approveStatus || 'Disabled').trim(),
                 additionalFields: processedAdditionalFields
             });
-
-            console.log('Creating review order:', JSON.stringify(reviewOrder.toObject(), null, 2));
 
             const savedOrder = await reviewOrder.save();
             return await Review.findById(savedOrder._id)
@@ -210,24 +203,32 @@ class OrderService {
 
     // Update review order
     async updateReviewOrder(orderId, updateData) {
-        // If there are new documents, upload them
+        // If there are new documents, process them
         if (updateData.documents) {
             const uploadedDocs = await Promise.all(
                 updateData.documents.map(async (doc) => {
+                    let docData = {
+                        documentName: doc.documentName,
+                        ocrData: doc.ocrData || {}
+                    };
+
                     if (doc.file) {
-                        const uploadResult = await uploadToS3({
-                            buffer: doc.file.buffer,
-                            mimetype: doc.file.mimetype,
-                            originalname: doc.file.originalname
-                        });
-                        return {
-                            documentName: doc.documentName,
-                            s3Url: uploadResult.url,
-                            s3Key: uploadResult.key,
-                            ocrData: doc.ocrData || {}
-                        };
+                        // If using S3
+                        if (uploadToS3) {
+                            const uploadResult = await uploadToS3({
+                                buffer: doc.file.buffer,
+                                mimetype: doc.file.mimetype,
+                                originalname: doc.file.originalname
+                            });
+                            docData.s3Url = uploadResult.url;
+                            docData.s3Key = uploadResult.key;
+                        }
+                        // If using P2P (implement your P2P upload logic here)
+                        // const p2pResult = await uploadToP2P(doc.file);
+                        // docData.p2pHash = p2pResult.hash;
+                        // docData.p2pUrl = p2pResult.url;
                     }
-                    return doc;
+                    return docData;
                 })
             );
             updateData.documents = uploadedDocs;

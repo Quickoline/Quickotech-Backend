@@ -26,7 +26,11 @@ const PostSchema = new mongoose.Schema({
       required: true
     }
   },
-  featured_image: String,
+  featured_image: {
+    type: String,
+    required: false,
+    default: null
+  },
   tags: [{
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Tag'
@@ -56,7 +60,11 @@ const PageSchema = new mongoose.Schema({
     unique: true
   },
   content: String,
-  featured_image: String,
+  featured_image: {
+    type: String,
+    required: false,
+    default: null
+  },
   published: {
     type: Boolean,
     default: false

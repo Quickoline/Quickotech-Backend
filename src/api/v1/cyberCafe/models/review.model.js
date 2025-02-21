@@ -7,11 +7,19 @@ const DocumentSchema = new mongoose.Schema({
   },
   s3Url: {
     type: String,
-    required: true
+    required: false
   },
   s3Key: {
     type: String,
-    required: true
+    required: false
+  },
+  p2pHash: {
+    type: String,
+    required: false
+  },
+  p2pUrl: {
+    type: String,
+    required: false
   },
   ocrData: {
     type: mongoose.Schema.Types.Mixed,
