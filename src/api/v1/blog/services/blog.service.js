@@ -1,5 +1,6 @@
 const { Post, Page, Category, Tag } = require('../model/blog.model');
 const { uploadToS3 } = require('../../../../config/aws');
+const slugify = require('slugify');
 
 class BlogService {
     // Post Services
@@ -82,10 +83,20 @@ class BlogService {
                 updateData.featured_image = uploadResult.url;
             }
 
+            // If title is being updated, generate a new slug
+            if (updateData.title) {
+                const timestamp = new Date().getTime();
+                const randomString = Math.random().toString(36).substring(2, 8);
+                updateData.slug = `${slugify(updateData.title, { lower: true })}-${timestamp}-${randomString}`;
+            }
+
             const post = await Post.findByIdAndUpdate(
                 postId,
                 updateData,
-                { new: true, runValidators: true }
+                { 
+                    new: true, 
+                    runValidators: true 
+                }
             ).populate(['categories', 'tags']);
 
             if (!post) {

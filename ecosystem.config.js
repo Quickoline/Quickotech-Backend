@@ -1,7 +1,7 @@
 module.exports = {
   apps: [{
     name: 'quickotech-backend',
-    script: 'src/server.js',
+    script: './server.js',
     instances: 'max',
     exec_mode: 'cluster',
     autorestart: true,

@@ -16,6 +16,16 @@ const PostSchema = new mongoose.Schema({
     type: String,
     required: true
   },
+  author: {
+    name: {
+      type: String,
+      required: true
+    },
+    employeeId: {
+      type: String,
+      required: true
+    }
+  },
   featured_image: String,
   tags: [{
     type: mongoose.Schema.Types.ObjectId,
@@ -83,17 +93,47 @@ const TagSchema = new mongoose.Schema({
   description: String
 }, { timestamps: { createdAt: 'created_at' } });
 
+const PrivacyPolicySchema = new mongoose.Schema({
+  content: {
+    type: String,
+    required: [true, 'Privacy policy content is required']
+  },
+  version: {
+    type: String,
+    required: [true, 'Version number is required'],
+    unique: true
+  },
+  effectiveDate: {
+    type: Date,
+    required: [true, 'Effective date is required']
+  },
+  isActive: {
+    type: Boolean,
+    default: false
+  },
+  changelog: {
+    type: String,
+    required: [true, 'Changelog is required']
+  }
+}, { 
+  timestamps: { createdAt: 'created_at', updatedAt: 'updated_at' } 
+});
+
 // Add pagination plugin
 PostSchema.plugin(mongoosePaginate);
 PageSchema.plugin(mongoosePaginate);
 CategorySchema.plugin(mongoosePaginate);
 TagSchema.plugin(mongoosePaginate);
+PrivacyPolicySchema.plugin(mongoosePaginate);
 
 // Add slug generation middleware
 [PostSchema, PageSchema, CategorySchema, TagSchema].forEach(schema => {
   schema.pre('save', function(next) {
     if (this.isModified('title') || this.isModified('name')) {
-      this.slug = slugify(this.title || this.name, { lower: true });
+      const timestamp = new Date().getTime();
+      const randomString = Math.random().toString(36).substring(2, 8);
+      const baseSlug = this.title || this.name;
+      this.slug = `${slugify(baseSlug, { lower: true })}-${timestamp}-${randomString}`;
     }
     next();
   });
@@ -113,9 +153,21 @@ PostSchema.virtual('formattedDate').get(function() {
   return new Date(this.created_at).toLocaleDateString();
 });
 
+// Middleware to ensure only one active version exists
+PrivacyPolicySchema.pre('save', async function(next) {
+  if (this.isActive) {
+    await this.constructor.updateMany(
+      { _id: { $ne: this._id } },
+      { isActive: false }
+    );
+  }
+  next();
+});
+
 module.exports = {
   Post: mongoose.model('Post', PostSchema),
   Page: mongoose.model('Page', PageSchema),
   Category: mongoose.model('Category', CategorySchema),
-  Tag: mongoose.model('Tag', TagSchema)
+  Tag: mongoose.model('Tag', TagSchema),
+  PrivacyPolicy: mongoose.model('PrivacyPolicy', PrivacyPolicySchema)
 };

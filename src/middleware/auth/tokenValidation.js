@@ -2,7 +2,7 @@ const jwt = require('jsonwebtoken');
 const { AuthenticationError } = require('../error/errorTypes');
 
 class TokenValidation {
-    static generateToken(user, expiresIn = '24h') {
+    static generateToken(user, expiresIn = '168h') {
         try {
             const payload = {
                 id: user._id,
@@ -87,7 +87,7 @@ class TokenValidation {
                 payload.email = decoded.email;
             }
 
-            return jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: '24h' });
+            return jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: '168h' });
         } catch (error) {
             if (error.name === 'TokenExpiredError') {
                 throw new AuthenticationError('Token has expired');

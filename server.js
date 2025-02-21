@@ -20,21 +20,15 @@ const socketService = new SocketService(server);
 const corsOptions = {
     origin: [
         'http://localhost:3000', 
-        'http://localhost:3001', 
-        'http://localhost:58480',
-        'http://10.0.2.2:3000',    // Android emulator
-        'http://10.0.2.2:8081',    // React Native default
-        'http://10.0.2.2',         // Android emulator base URL
-        'capacitor://localhost',   // Capacitor
-        'ionic://localhost',       // Ionic
-        '*'                        // Allow all origins for development
+        'http://localhost:3001',
+        'https://quickotech.vercel.app',
+        'https://quickotech-admin.vercel.app',
+        '*'
     ],
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'Accept', 'Origin', 'X-Requested-With'],
     credentials: true,
-    optionsSuccessStatus: 200,
-    exposedHeaders: ['Content-Length', 'X-Foo', 'X-Bar'],
-    maxAge: 86400
+    optionsSuccessStatus: 200
 };
 
 // Apply CORS middleware
@@ -68,7 +62,11 @@ const swaggerOptions = {
         },
         servers: [
             {
-                url: process.env.FRONTEND_URL || 'http://localhost:3000',
+                url: 'https://quickotech-backend.vercel.app',
+                description: 'Production server'
+            },
+            {
+                url: 'http://localhost:3000',
                 description: 'Development server'
             }
         ],
@@ -85,39 +83,10 @@ const swaggerOptions = {
             {
                 bearerAuth: []
             }
-        ],
-        tags: [
-            { 
-                name: 'Auth', 
-                description: 'Authentication endpoints' 
-            },
-            { 
-                name: 'Chat', 
-                description: 'Real-time chat system (Requires App Admin or higher for admin functions)' 
-            },
-            { 
-                name: 'Blog', 
-                description: 'Blog management (GET endpoints public, others require Web Admin)' 
-            },
-            { 
-                name: 'Products', 
-                description: 'Product management (Requires Senior Admin)' 
-            },
-            { 
-                name: 'Templates', 
-                description: 'Template management (Requires Senior Admin)' 
-            },
-            { 
-                name: 'Users', 
-                description: 'User management (Various admin levels required)' 
-            }
         ]
     },
     apis: [
         './src/api/v1/auth/routes/*.js',
-        './src/api/v1/chat/*.routes.js',
-        './src/api/v1/chat/routes/*.js',
-        './src/api/v1/cyberCafe/routes/*.js',
         './src/api/v1/blog/*.routes.js',
         './src/api/v1/blog/routes/*.js',
         './src/api/v1/user/*.routes.js',
@@ -133,17 +102,10 @@ const swaggerSpec = swaggerJsdoc(swaggerOptions);
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, {
     explorer: true,
     customCss: '.swagger-ui .topbar { display: none }',
-    customSiteTitle: "Quickotech API Documentation",
-    customfavIcon: "/assets/favicon.ico",
-    swaggerOptions: {
-        persistAuthorization: true,
-        displayRequestDuration: true,
-        filter: true,
-        showCommonExtensions: true
-    }
+    customSiteTitle: "Quickotech API Documentation"
 }));
 
-// Connect to MongoDB first, then load models and start server
+// Connect to MongoDB
 mongoose.connect(process.env.MONGODB_URI)
     .then(async () => {
         console.log('Connected to MongoDB');
@@ -152,42 +114,32 @@ mongoose.connect(process.env.MONGODB_URI)
         require('./src/api/v1/user/model/user.model');
         require('./src/api/v1/admin/model/product.model');
         require('./src/api/v1/blog/model/blog.model');
-        require('./src/api/v1/chat/model/chat.model');
         
         // Initialize routes
         const authRoutes = require('./src/api/v1/auth/routes/auth.routes');
-        const orderRoutes = require('./src/api/v1/cyberCafe/routes/order.routes');
-        const chatRoutes = require('./src/api/v1/chat/chat.routes');
         const userRoutes = require('./src/api/v1/user/user.routes');
         const blogRoutes = require('./src/api/v1/blog/blog.routes');
-        const notificationRoutes = require('./src/api/v1/admin/routes/notification.routes');
-        const templateRoutes = require('./src/api/v1/admin/routes/template.routes');
         const productRoutes = require('./src/api/v1/admin/routes/product.routes');
-        const regexTemplateRoutes = require('./src/api/v1/admin/routes/regexTemplate.routes');
 
         // Register routes
         app.use('/api/v1/auth', authRoutes);
-        app.use('/api/v1/cyber-cafe', orderRoutes);
-        app.use('/api/v1/chat', chatRoutes);
         app.use('/api/v1/users', userRoutes);
         app.use('/api/v1/blog', blogRoutes);
-        app.use('/api/v1/admin/notifications', notificationRoutes);
-        app.use('/api/v1/admin/templates', templateRoutes);
         app.use('/api/v1/admin/products', productRoutes);
-        app.use('/api/v1/admin/regex-templates', regexTemplateRoutes);
-
-        // Serve chat test page
-        app.get('/chat-test', (req, res) => {
-            res.sendFile(path.join(__dirname, './src/api/v1/chat/test/chat.html'));
-        });
 
         // Test route
         app.get('/', (req, res) => {
             res.json({
-                message: 'Hello Quicko! Server is running successfully.',
+                message: 'Quickotech Backend API is running successfully.',
                 timestamp: new Date().toISOString(),
                 environment: process.env.NODE_ENV || 'development'
             });
+        });
+
+        // Debug route to log request details
+        app.use((req, res, next) => {
+            console.log(`[${new Date().toISOString()}] ${req.method} ${req.path}`);
+            next();
         });
 
         // 404 handler
@@ -212,11 +164,14 @@ mongoose.connect(process.env.MONGODB_URI)
             await checkS3Config();
             console.log('S3 configuration verified successfully');
             
-            // Start server only once
-            server.listen(process.env.PORT || 3000, () => {
-                console.log(`Server running on port ${process.env.PORT || 3000}`);
-                console.log(`API Documentation available at http://localhost:${process.env.PORT || 3000}/api-docs`);
-            });
+            // For Vercel, we export the app instead of starting the server
+            if (process.env.NODE_ENV !== 'production') {
+                const PORT = process.env.PORT || 3000;
+                app.listen(PORT, () => {
+                    console.log(`Server running on port ${PORT}`);
+                    console.log(`API Documentation available at http://localhost:${PORT}/api-docs`);
+                });
+            }
         } catch (error) {
             console.error('Server startup error:', error);
             process.exit(1);
@@ -231,7 +186,8 @@ mongoose.connect(process.env.MONGODB_URI)
 process.on('unhandledRejection', (err) => {
     console.log('UNHANDLED REJECTION! 💥 Shutting down...');
     console.log(err.name, err.message);
-    server.close(() => {
-        process.exit(1);
-    });
+    process.exit(1);
 });
+
+// Export the Express app for Vercel
+module.exports = app;

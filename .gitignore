@@ -57,7 +57,16 @@ pids/
 aws.json
 aws-credentials.json
 
-# Elastic Beanstalk Files
-.elasticbeanstalk/*
-!.elasticbeanstalk/*.cfg.yml
-!.elasticbeanstalk/*.global.yml
+# Firebase
+firebase-credentials.json
+firebase-adminsdk.json
+*firebase*.json
+
+# Temp files
+tmp/
+temp/
+uploads/
+
+# Test coverage
+coverage/
+.nyc_output/
