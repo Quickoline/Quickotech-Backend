@@ -1,17 +1,18 @@
 const User = require('../model/user.model');
-const { uploadToS3 } = require('../../../../config/aws');
+const bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken');
 
 class UserService {
     // Profile Management
     async createProfile(userData) {
         try {
             if (userData.profilePicture) {
-                const uploadResult = await uploadToS3(userData.profilePicture);
-                userData.profilePicture = uploadResult.url;
+                userData.profilePicture = userData.profilePicture.hash || userData.profilePicture.url;
             }
             
             const user = new User(userData);
-            return await user.save();
+            await user.save();
+            return user;
         } catch (error) {
             throw new Error(`Error creating profile: ${error.message}`);
         }
@@ -20,11 +21,20 @@ class UserService {
     async updateProfile(userId, updateData) {
         try {
             if (updateData.profilePicture) {
-                const uploadResult = await uploadToS3(updateData.profilePicture);
-                updateData.profilePicture = uploadResult.url;
+                updateData.profilePicture = updateData.profilePicture.hash || updateData.profilePicture.url;
             }
 
-            return await User.findByIdAndUpdate(userId, updateData, { new: true });
+            const user = await User.findByIdAndUpdate(
+                userId,
+                updateData,
+                { new: true, runValidators: true }
+            );
+
+            if (!user) {
+                throw new Error('User not found');
+            }
+
+            return user;
         } catch (error) {
             throw new Error(`Error updating profile: ${error.message}`);
         }

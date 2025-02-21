@@ -51,12 +51,6 @@ pids/
 # Yarn Integrity file
 .yarn-integrity
 
-# AWS
-.aws/
-.elasticbeanstalk/
-aws.json
-aws-credentials.json
-
 # Firebase
 firebase-credentials.json
 firebase-adminsdk.json
@@ -70,3 +64,4 @@ uploads/
 # Test coverage
 coverage/
 .nyc_output/
+

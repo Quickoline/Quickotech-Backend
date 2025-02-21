@@ -212,12 +212,16 @@ router.get('/search', BlogController.searchPosts);
  *         name: page
  *         schema:
  *           type: integer
- *         description: Page number (default: 1)
+ *         description: |
+ *           Page number
+ *           Default: 1
  *       - in: query
  *         name: limit
  *         schema:
  *           type: integer
- *         description: Number of items per page (default: 10)
+ *         description: |
+ *           Number of items per page
+ *           Default: 10
  *     responses:
  *       200:
  *         description: List of blog posts

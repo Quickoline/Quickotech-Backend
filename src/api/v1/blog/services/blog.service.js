@@ -1,5 +1,4 @@
 const { Post, Page, Category, Tag } = require('../model/blog.model');
-const { uploadToS3 } = require('../../../../config/aws');
 const slugify = require('slugify');
 
 class BlogService {
@@ -42,10 +41,10 @@ class BlogService {
 
     async createPost(postData) {
         try {
-            // Handle featured image upload if present
+            // Handle featured image if present
             if (postData.featured_image) {
-                const uploadResult = await uploadToS3(postData.featured_image);
-                postData.featured_image = uploadResult.url;
+                // Store the image hash/URL from P2P network
+                postData.featured_image = postData.featured_image.hash || postData.featured_image.url;
             }
 
             // Validate categories and tags
@@ -77,10 +76,10 @@ class BlogService {
 
     async updatePost(postId, updateData) {
         try {
-            // Handle featured image update if present
+            // Handle featured image if present
             if (updateData.featured_image) {
-                const uploadResult = await uploadToS3(updateData.featured_image);
-                updateData.featured_image = uploadResult.url;
+                // Store the image hash/URL from P2P network
+                updateData.featured_image = updateData.featured_image.hash || updateData.featured_image.url;
             }
 
             // If title is being updated, generate a new slug
@@ -298,8 +297,8 @@ class BlogService {
     async createPage(pageData) {
         try {
             if (pageData.featured_image) {
-                const uploadResult = await uploadToS3(pageData.featured_image);
-                pageData.featured_image = uploadResult.url;
+                // Store the image hash/URL from P2P network
+                pageData.featured_image = pageData.featured_image.hash || pageData.featured_image.url;
             }
 
             const page = new Page(pageData);
@@ -313,8 +312,8 @@ class BlogService {
     async updatePage(pageId, updateData) {
         try {
             if (updateData.featured_image) {
-                const uploadResult = await uploadToS3(updateData.featured_image);
-                updateData.featured_image = uploadResult.url;
+                // Store the image hash/URL from P2P network
+                updateData.featured_image = updateData.featured_image.hash || updateData.featured_image.url;
             }
 
             const page = await Page.findByIdAndUpdate(

@@ -1,7 +1,6 @@
 const ChatService = require('../services/chat.service');
 const { NotFoundError } = require('../../../../middleware/error/errorTypes');
-const ChatMessage = require('../model/chat.model');
-const { uploadToS3 } = require('../../../../config/aws');
+const Chat = require('../model/chat.model');
 const mongoose = require('mongoose');
 
 class ChatController {
@@ -33,13 +32,39 @@ class ChatController {
         }
     }
 
-    async sendMessage(req, res, next) {
+    async sendMessage(req, res) {
         try {
-            const { orderId, content } = req.body;
-            const message = await ChatService.sendAdminMessage(orderId, content, req.user.id);
-            res.json({ success: true, data: message });
+            const { message, roomId } = req.body;
+            
+            // Handle file if present
+            let fileData = null;
+            if (req.file) {
+                fileData = {
+                    hash: req.file.hash, // P2P file hash
+                    url: req.file.url,   // P2P file URL
+                    name: req.file.originalname,
+                    type: req.file.mimetype
+                };
+            }
+
+            const chat = new Chat({
+                message,
+                roomId,
+                sender: req.user.id,
+                file: fileData
+            });
+
+            await chat.save();
+
+            res.status(201).json({
+                success: true,
+                data: chat
+            });
         } catch (error) {
-            next(error);
+            res.status(400).json({
+                success: false,
+                error: error.message
+            });
         }
     }
 
@@ -92,21 +117,13 @@ class ChatController {
                 messageType = 'pdf';
             }
 
-            // Upload file to S3
-            const uploadResult = await uploadToS3({
-                buffer: req.file.buffer,
-                originalname: req.file.originalname,
-                mimetype: req.file.mimetype
-            });
-
             // Create chat message
-            const chatMessage = new ChatMessage({
+            const chatMessage = new Chat({
                 orderId,
                 sender: req.user.id,
                 senderType: req.user.role.includes('app_admin') ? 'admin' : 'user',
                 messageType,
                 content: message,
-                fileUrl: uploadResult.url,
                 fileName: req.file.originalname,
                 fileSize: req.file.size,
                 mimeType: req.file.mimetype

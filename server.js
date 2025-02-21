@@ -8,7 +8,6 @@ const path = require('path');
 const http = require('http');
 const SocketService = require('./src/api/v1/chat/services/socket.service');
 const cors = require('cors');
-const { checkS3Config } = require('./src/config/aws');
 
 const app = express();
 const server = http.createServer(app);
@@ -160,11 +159,6 @@ mongoose.connect(process.env.MONGODB_URI)
         });
 
         try {
-            // Verify S3 configuration
-            await checkS3Config();
-            console.log('S3 configuration verified successfully');
-            
-            // For Vercel, we export the app instead of starting the server
             if (process.env.NODE_ENV !== 'production') {
                 const PORT = process.env.PORT || 3000;
                 app.listen(PORT, () => {
