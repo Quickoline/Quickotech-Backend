@@ -127,7 +127,7 @@ mongoose.connect(process.env.MONGODB_URI)
         app.use('/api/v1/users', userRoutes);
         app.use('/api/v1/blog', blogRoutes);
         app.use('/api/v1/admin/products', productRoutes);
-        app.use('/api/v1/cyberCafe', orderRoutes);
+        app.use('/api/v1/cyber-cafe', orderRoutes);
 
         // Test route
         app.get('/', (req, res) => {
