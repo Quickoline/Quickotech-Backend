@@ -119,12 +119,14 @@ mongoose.connect(process.env.MONGODB_URI)
         const userRoutes = require('./src/api/v1/user/user.routes');
         const blogRoutes = require('./src/api/v1/blog/blog.routes');
         const productRoutes = require('./src/api/v1/admin/routes/product.routes');
+        const orderRoutes = require('./src/api/v1/cyberCafe/routes/order.routes');
 
         // Register routes
         app.use('/api/v1/auth', authRoutes);
         app.use('/api/v1/users', userRoutes);
         app.use('/api/v1/blog', blogRoutes);
         app.use('/api/v1/admin/products', productRoutes);
+        app.use('/api/v1/cyber-cafe', orderRoutes);
 
         // Test route
         app.get('/', (req, res) => {
