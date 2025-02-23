@@ -1,7 +1,6 @@
 const Review = require('../models/review.model');
 const Finalized = require('../models/finalized.model');
 const Product = require('../../admin/model/product.model');
-const { uploadToS3 } = require('../../../../config/aws');
 
 class OrderService {
     // Validate service existence and required documents
@@ -39,14 +38,8 @@ class OrderService {
                             };
 
                             if (file) {
-                                // If using S3
-                                if (uploadToS3) {
-                                    const uploadResult = await uploadToS3(file);
-                                    docData.s3Url = uploadResult.url;
-                                    docData.s3Key = uploadResult.key;
-                                }
-                                // If using P2P (implement your P2P upload logic here)
-                                // const p2pResult = await uploadToP2P(file);
+                                // Handle P2P file upload
+                                // Note: Implement your P2P upload logic here
                                 // docData.p2pHash = p2pResult.hash;
                                 // docData.p2pUrl = p2pResult.url;
                             }
@@ -213,18 +206,8 @@ class OrderService {
                     };
 
                     if (doc.file) {
-                        // If using S3
-                        if (uploadToS3) {
-                            const uploadResult = await uploadToS3({
-                                buffer: doc.file.buffer,
-                                mimetype: doc.file.mimetype,
-                                originalname: doc.file.originalname
-                            });
-                            docData.s3Url = uploadResult.url;
-                            docData.s3Key = uploadResult.key;
-                        }
-                        // If using P2P (implement your P2P upload logic here)
-                        // const p2pResult = await uploadToP2P(doc.file);
+                        // Handle P2P file upload
+                        // Note: Implement your P2P upload logic here
                         // docData.p2pHash = p2pResult.hash;
                         // docData.p2pUrl = p2pResult.url;
                     }

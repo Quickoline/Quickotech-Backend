@@ -5,14 +5,6 @@ const DocumentSchema = new mongoose.Schema({
     type: String,
     required: true
   },
-  s3Url: {
-    type: String,
-    required: false
-  },
-  s3Key: {
-    type: String,
-    required: false
-  },
   p2pHash: {
     type: String,
     required: false
