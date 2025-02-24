@@ -36,18 +36,19 @@ const FeedbackSchema = new mongoose.Schema({
 }, { timestamps: true });
 
 const ContactSchema = new mongoose.Schema({
-    userId: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'User'
-    },
-    subject: {
+    name: {
         type: String,
         required: true
     },
-    message: {
+    phone: {
         type: String,
         required: true
     },
+    email: {
+        type: String,
+        match: [/^\S+@\S+\.\S+$/, 'Please use a valid email address']
+    },
+    notes: String,
     status: {
         type: String,
         enum: ['Open', 'In Progress', 'Closed'],
@@ -57,8 +58,7 @@ const ContactSchema = new mongoose.Schema({
         type: String,
         enum: ['Low', 'Medium', 'High'],
         default: 'Medium'
-    },
-    response: String
+    }
 }, { timestamps: true });
 
 const userSchema = new mongoose.Schema({

@@ -69,9 +69,36 @@ class UserController {
     // Feedback Management
     async submitFeedback(req, res) {
         try {
+            const { type, description, rating } = req.body;
+            
+            // Validate required fields
+            if (!type || !description) {
+                return res.status(400).json({
+                    success: false,
+                    error: 'Type and description are required fields'
+                });
+            }
+
+            // Validate type enum
+            const validTypes = ['Service', 'Bug Report', 'Suggestion', 'Other'];
+            if (!validTypes.includes(type)) {
+                return res.status(400).json({
+                    success: false,
+                    error: `Type must be one of: ${validTypes.join(', ')}`
+                });
+            }
+
+            // Validate rating if provided
+            if (rating !== undefined && (rating < 1 || rating > 5)) {
+                return res.status(400).json({
+                    success: false,
+                    error: 'Rating must be between 1 and 5'
+                });
+            }
+
             const result = await UserService.submitFeedback(
                 req.params.userId,
-                req.body
+                { type, description, rating }
             );
             res.status(201).json({
                 success: true,
@@ -107,9 +134,39 @@ class UserController {
     // Contact Management
     async submitContact(req, res) {
         try {
+            const { name, phone, email, notes } = req.body;
+            
+            // Validate required fields
+            if (!name || !phone) {
+                return res.status(400).json({
+                    success: false,
+                    error: 'Name and phone are required fields'
+                });
+            }
+
+            // Validate phone format (simple validation for +91 followed by 10 digits)
+            const phoneRegex = /^\+91[0-9]{10}$/;
+            if (!phoneRegex.test(phone)) {
+                return res.status(400).json({
+                    success: false,
+                    error: 'Phone number must be in format: +91XXXXXXXXXX'
+                });
+            }
+
+            // Validate email if provided
+            if (email) {
+                const emailRegex = /^\S+@\S+\.\S+$/;
+                if (!emailRegex.test(email)) {
+                    return res.status(400).json({
+                        success: false,
+                        error: 'Invalid email format'
+                    });
+                }
+            }
+
             const result = await UserService.submitContact(
                 req.params.userId,
-                req.body
+                { name, phone, email, notes }
             );
             res.status(201).json({
                 success: true,
