@@ -37,7 +37,7 @@ class EmailService {
     async sendEmail(to, subject, html) {
         try {
             const mailOptions = {
-                from: `"Quickotech Support" <${process.env.EMAIL_FROM}>`,
+                from: `"Quickoline Support" <${process.env.EMAIL_FROM}>`,
                 to,
                 subject,
                 html
