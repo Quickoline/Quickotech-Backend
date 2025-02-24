@@ -4,15 +4,19 @@ class EmailService {
     constructor() {
         // Create Gmail transporter with correct SMTP settings
         this.transporter = nodemailer.createTransport({
+            service: 'gmail',
             host: 'smtp.gmail.com',
             port: 587,
-            secure: false, // true for 465, false for other ports
+            secure: false,
+            requireTLS: true,
             auth: {
                 user: process.env.EMAIL_USERNAME,
-                pass: process.env.EMAIL_PASSWORD // Gmail App Password
+                pass: process.env.EMAIL_PASSWORD
             },
-            debug: true, // Show debug output
-            logger: true // Log information into the console
+            tls: {
+                ciphers: 'SSLv3',
+                rejectUnauthorized: false
+            }
         });
 
         // Verify connection configuration
