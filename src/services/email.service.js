@@ -2,26 +2,32 @@ const nodemailer = require('nodemailer');
 
 class EmailService {
     constructor() {
-        // Create Gmail transporter
+        // Create Gmail transporter with correct SMTP settings
         this.transporter = nodemailer.createTransport({
-            service: 'gmail',
+            host: 'smtp.gmail.com',
+            port: 587,
+            secure: false, // true for 465, false for other ports
             auth: {
                 user: process.env.EMAIL_USERNAME,
                 pass: process.env.EMAIL_PASSWORD // Gmail App Password
             },
-            tls: {
-                rejectUnauthorized: false
-            }
+            debug: true, // Show debug output
+            logger: true // Log information into the console
         });
 
         // Verify connection configuration
-        this.transporter.verify((error, success) => {
-            if (error) {
-                console.error('Email service error:', error);
-            } else {
-                console.log('Email server is ready to send messages');
-            }
-        });
+        this.verifyConnection();
+    }
+
+    async verifyConnection() {
+        try {
+            await this.transporter.verify();
+            console.log('Email server is ready to send messages');
+        } catch (error) {
+            console.error('Email service error:', error);
+            // Retry connection after 5 seconds
+            setTimeout(() => this.verifyConnection(), 5000);
+        }
     }
 
     async sendEmail(to, subject, html) {
