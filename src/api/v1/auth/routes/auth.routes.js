@@ -3,6 +3,9 @@ const router = express.Router();
 const AuthController = require('../controllers/auth.controller');
 const { verifyToken, isSuperAdmin } = require('../../../../middleware/auth/authMiddleware');
 const { hasMinRole } = require('../../../../middleware/auth/roleMiddleware');
+const TokenValidation = require('../../../../middleware/auth/tokenValidation');
+const emailService = require('../../../../services/email.service');
+const User = require('../../user/model/user.model');
 
 /**
  * @swagger
@@ -402,7 +405,42 @@ router.post('/admin/create', verifyToken, isSuperAdmin, AuthController.createAdm
  *       404:
  *         description: Email not found
  */
-router.post('/forgot-password', AuthController.forgotPassword);
+router.post('/forgot-password', async (req, res) => {
+    try {
+        const { email } = req.body;
+
+        // Find user by email
+        const user = await User.findOne({ email });
+        if (!user) {
+            return res.status(404).json({
+                success: false,
+                error: 'No account found with this email address'
+            });
+        }
+
+        // Generate password reset token
+        const resetToken = TokenValidation.generatePasswordResetToken(user._id);
+
+        // Save reset token and expiry to user document
+        user.passwordResetToken = resetToken;
+        user.passwordResetExpires = new Date(Date.now() + 3600000); // 1 hour
+        await user.save();
+
+        // Send password reset email
+        await emailService.sendPasswordResetEmail(email, resetToken);
+
+        res.json({
+            success: true,
+            message: 'Password reset instructions have been sent to your email'
+        });
+    } catch (error) {
+        console.error('Password reset request error:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Error processing password reset request'
+        });
+    }
+});
 
 /**
  * @swagger
@@ -436,7 +474,53 @@ router.post('/forgot-password', AuthController.forgotPassword);
  *       404:
  *         description: User not found
  */
-router.post('/reset-password', AuthController.resetPassword);
+router.post('/reset-password', async (req, res) => {
+    try {
+        const { token, password } = req.body;
+
+        // Validate token and password
+        if (!token || !password) {
+            return res.status(400).json({
+                success: false,
+                error: 'Token and new password are required'
+            });
+        }
+
+        // Verify reset token
+        const decoded = TokenValidation.verifyPasswordResetToken(token);
+        
+        // Find user and check if reset token is still valid
+        const user = await User.findOne({
+            _id: decoded.userId,
+            passwordResetToken: token,
+            passwordResetExpires: { $gt: Date.now() }
+        });
+
+        if (!user) {
+            return res.status(400).json({
+                success: false,
+                error: 'Password reset token is invalid or has expired'
+            });
+        }
+
+        // Update password and clear reset token fields
+        user.password = password;
+        user.passwordResetToken = undefined;
+        user.passwordResetExpires = undefined;
+        await user.save();
+
+        res.json({
+            success: true,
+            message: 'Password has been reset successfully'
+        });
+    } catch (error) {
+        console.error('Password reset error:', error);
+        res.status(400).json({
+            success: false,
+            error: 'Error resetting password'
+        });
+    }
+});
 
 /**
  * @swagger
