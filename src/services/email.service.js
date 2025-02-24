@@ -55,14 +55,14 @@ class EmailService {
     async sendPasswordResetEmail(to, resetToken) {
         try {
             const resetUrl = `${process.env.FRONTEND_URL}/reset-password?token=${resetToken}`;
-            const subject = 'Password Reset Request - Quickotech';
+            const subject = 'Password Reset Request - Quickoline';
             const html = `
                 <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
                     <div style="background-color: #f8f9fa; padding: 20px; text-align: center; border-radius: 10px 10px 0 0;">
                         <h2 style="color: #333; margin: 0;">Password Reset Request</h2>
                     </div>
                     <div style="padding: 20px; border: 1px solid #eee; border-radius: 0 0 10px 10px;">
-                        <p style="color: #555;">You requested a password reset for your Quickotech account. Click the button below to reset your password:</p>
+                        <p style="color: #555;">You requested a password reset for your Quickoline account. Click the button below to reset your password:</p>
                         <div style="text-align: center; margin: 30px 0;">
                             <a href="${resetUrl}" 
                                style="background-color: #4CAF50; 
@@ -79,7 +79,7 @@ class EmailService {
                         <p style="color: #666; font-size: 14px;">If you didn't request this password reset, please ignore this email or contact our support team if you have concerns.</p>
                         <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #eee;">
                             <p style="color: #999; font-size: 12px; text-align: center; margin: 0;">
-                                This is an automated message from Quickotech. Please do not reply to this email.
+                                This is an automated message from Quickoline. Please do not reply to this email.
                             </p>
                         </div>
                     </div>
