@@ -22,6 +22,7 @@ const corsOptions = {
         'http://localhost:3001',
         'https://quickotech.vercel.app',
         'https://quickotech-admin.vercel.app',
+        'https://quickoline.vercel.app',
         '*'
     ],
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
