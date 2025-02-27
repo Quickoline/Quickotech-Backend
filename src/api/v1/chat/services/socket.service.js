@@ -32,23 +32,37 @@ class SocketService {
 
       socket.on('message', async (data) => {
         try {
-          // Handle file if present
-          if (data.file) {
-            // Store file hash/URL from P2P network
-            data.fileUrl = data.file.hash || data.file.url;
-            data.fileName = data.file.name;
-            data.fileType = data.file.type;
+          console.log('Received message data:', data); // Debug log
+
+          // Validate required fields
+          if (!data.orderId || !data.sender || !data.senderType) {
+            throw new Error('Missing required fields: orderId, sender, or senderType');
           }
 
-          // Create chat message
+          // Handle file if present
+          let fileData = {};
+          if (data.file) {
+            await this.validateFile(data.file);
+            fileData = {
+              fileUrl: data.file.hash || data.file.url,
+              fileName: data.file.name,
+              fileType: data.file.type,
+              fileSize: data.file.size
+            };
+          }
+
+          // Create chat message with all required fields
           const chat = new Chat({
+            orderId: data.orderId,
             room: data.room,
             sender: data.sender,
+            senderType: data.senderType,
+            type: data.type || 'text',
             message: data.message,
-            fileUrl: data.fileUrl,
-            fileName: data.fileName,
-            fileType: data.fileType
+            ...fileData
           });
+
+          console.log('Creating chat message:', chat); // Debug log
 
           await chat.save();
 
@@ -56,7 +70,10 @@ class SocketService {
           this.io.to(data.room).emit('message', chat);
         } catch (error) {
           console.error('Error handling message:', error);
-          socket.emit('error', { message: 'Error processing message' });
+          socket.emit('error', { 
+            message: 'Error processing message', 
+            details: error.message 
+          });
         }
       });
 

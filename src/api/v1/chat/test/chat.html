@@ -3,63 +3,116 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Chat System</title>
+    <title>Quickoline Chat System</title>
     <style>
         body {
             font-family: Arial, sans-serif;
             margin: 0;
             padding: 20px;
+            background-color: #f0f2f5;
         }
         .chat-container {
             max-width: 800px;
             margin: 0 auto;
-            border: 1px solid #ccc;
-            border-radius: 5px;
+            border: 1px solid #ddd;
+            border-radius: 10px;
+            background: white;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .chat-header {
+            padding: 15px 20px;
+            background: #2196f3;
+            color: white;
+            border-radius: 10px 10px 0 0;
         }
         .chat-messages {
             height: 400px;
             overflow-y: auto;
             padding: 20px;
-            background: #f9f9f9;
+            background: #fff;
         }
         .message {
             margin-bottom: 10px;
             padding: 10px;
-            border-radius: 5px;
+            border-radius: 10px;
+            max-width: 70%;
+            word-wrap: break-word;
         }
         .message.user {
             background: #e3f2fd;
-            margin-left: 20%;
+            margin-left: auto;
+            color: #1565c0;
         }
         .message.admin {
             background: #f5f5f5;
-            margin-right: 20%;
+            margin-right: auto;
+            color: #333;
         }
         .chat-input {
             display: flex;
             padding: 20px;
-            border-top: 1px solid #ccc;
+            border-top: 1px solid #eee;
+            background: #f8f9fa;
+            border-radius: 0 0 10px 10px;
         }
         input[type="text"] {
             flex: 1;
-            padding: 10px;
+            padding: 12px;
             margin-right: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 14px;
         }
         button {
-            padding: 10px 20px;
+            padding: 12px 24px;
             background: #2196f3;
             color: white;
             border: none;
             border-radius: 5px;
             cursor: pointer;
+            font-weight: bold;
+            transition: background 0.3s;
+        }
+        button:hover {
+            background: #1976d2;
+        }
+        button:disabled {
+            background: #90caf9;
+            cursor: not-allowed;
         }
         .file-input {
             margin-right: 10px;
+        }
+        .connection-status {
+            text-align: center;
+            margin-bottom: 10px;
+            padding: 5px;
+            color: #666;
+        }
+        .status-indicator {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            margin-right: 5px;
+        }
+        .status-connected {
+            background-color: #4caf50;
+        }
+        .status-disconnected {
+            background-color: #f44336;
         }
     </style>
 </head>
 <body>
     <div class="chat-container">
+        <div class="chat-header">
+            <h2 style="margin: 0;">Quickoline Chat</h2>
+        </div>
+        <div class="connection-status">
+            <span class="status-indicator"></span>
+            <span id="connectionStatus">Connecting...</span>
+        </div>
         <div class="chat-messages" id="messages"></div>
         <div class="chat-input">
             <input type="file" id="fileInput" class="file-input">
@@ -68,66 +121,36 @@
         </div>
     </div>
 
+    <!-- Add Socket.IO client library -->
+    <script src="https://cdn.socket.io/4.7.4/socket.io.min.js"></script>
+    
+    <!-- Global variables and functions -->
     <script>
-        const urlParams = new URLSearchParams(window.location.search);
-        const orderId = '679cfaac4e067193193e38c0';  // Hardcoded order ID
-        const userToken = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY3OWNlNWE3YmFkZTk1ZDBkODQwZmM1ZSIsInJvbGUiOiJ1c2VyIiwiZW1haWwiOiJ0ZXN0QGV4YW1wbGUuY29tIiwiaWF0IjoxNzM4MzM1NzEzLCJleHAiOjE3Mzg0MjIxMTN9.lJk8pxznLH37Rbb-Va_qdm2Jk9VG-YlhVsmrRhR2p0Q';
-        const adminToken = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY3OTlmNzNmODUyMWZlMDdmMTE3NTNkYiIsInJvbGUiOiJhcHBfYWRtaW4iLCJlbXBsb3llZUlkIjoiQURNSU4wMDIiLCJpYXQiOjE3MzgyNTM3OTAsImV4cCI6MTczODM0MDE5MH0.afCXACsZZhjhTc8pzsaJVAXQ_B2Fw5VZf0RpnbdAqOE';
-
-        // Get token based on userType from URL
-        const userType = urlParams.get('userType') || 'user';
-        const token = userType === 'admin' ? adminToken : userToken;
-
-        // Update WebSocket connection with error handling
-        let ws;
-        let reconnectAttempts = 0;
-        const maxReconnectAttempts = 5;
-
-        function connectWebSocket() {
-            ws = new WebSocket(`ws://${window.location.host}/chat?orderId=${orderId}&token=${token}&userType=${userType}`);
-
-            ws.onopen = () => {
-                console.log('Connected to WebSocket');
-                reconnectAttempts = 0;
-                loadChatHistory();
-            };
-
-            ws.onclose = (event) => {
-                console.log('WebSocket closed:', event);
-                if (reconnectAttempts < maxReconnectAttempts) {
-                    console.log(`Attempting to reconnect (${reconnectAttempts + 1}/${maxReconnectAttempts})...`);
-                    reconnectAttempts++;
-                    setTimeout(connectWebSocket, 5000);
-                } else {
-                    console.log('Max reconnection attempts reached');
-                    alert('Connection lost. Please refresh the page.');
-                }
-            };
-
-            ws.onerror = (error) => {
-                console.error('WebSocket error:', error);
-            };
-
-            ws.onmessage = (event) => {
-                const data = JSON.parse(event.data);
-                console.log('Received message:', data);
-                if (data.type === 'message') {
-                    displayMessage(data.data);
-                } else if (data.type === 'error') {
-                    console.error('Server error:', data.message);
-                    alert(data.message);
-                }
-            };
-        }
-
-        // Initial connection
-        connectWebSocket();
-
-        // Update send message function
+        // Declare global variables that will be used by the module script
+        let socket;
+        let userType = 'user';  // Default value
+        
+        // Order and user information
+        const chatConfig = {
+            orderId: '67bb12aed1d99c4634e39b50',    // Order ID
+            userId: '67b8c2fa12e745e82a2ac03f',      // User ID
+            serviceId: '67b8bdd2aa686aa3b14ec3c9',   // Service ID
+            orderIdentifier: 'ORD-2024-001'
+        };
+        window.orderId = chatConfig.orderId;  // Set orderId globally
+        
+        // Make sendMessage function global
         function sendMessage() {
-            if (!ws || ws.readyState !== WebSocket.OPEN) {
-                console.error('WebSocket is not connected');
+            if (!socket || !socket.connected) {
+                console.error('Socket is not connected');
                 alert('Connection lost. Please wait for reconnection or refresh the page.');
+                return;
+            }
+
+            // Validate required fields
+            if (!userType || !window.orderId) {
+                console.error('Missing required fields:', { userType, orderId: window.orderId });
+                alert('Error: Missing required fields. Please refresh the page.');
                 return;
             }
 
@@ -137,6 +160,14 @@
             const sendButton = document.querySelector('button');
 
             if (!messageInput.value && !file) return;
+
+            // Base message object with required fields
+            const baseMessage = {
+                orderId: chatConfig.orderId,
+                sender: chatConfig.userId,
+                senderType: userType,
+                room: chatConfig.orderId
+            };
 
             try {
                 // Disable send button while processing
@@ -179,17 +210,17 @@
                             canvas.toBlob((blob) => {
                                 const reader = new FileReader();
                                 reader.onload = (e) => {
-                                    const message = {
+                                    socket.emit('message', {
+                                        ...baseMessage,
                                         type: 'image',
-                                        content: messageInput.value || file.name,
+                                        message: messageInput.value || file.name,
                                         file: {
                                             name: file.name,
                                             type: file.type,
                                             size: blob.size,
                                             data: e.target.result
                                         }
-                                    };
-                                    ws.send(JSON.stringify(message));
+                                    });
                                     
                                     // Reset UI
                                     messageInput.value = '';
@@ -198,23 +229,23 @@
                                     sendButton.textContent = 'Send';
                                 };
                                 reader.readAsDataURL(blob);
-                            }, 'image/jpeg', 0.7); // Reduce quality to 70%
+                            }, 'image/jpeg', 0.7);
                         };
                     } else {
                         // Handle non-image files
                         const reader = new FileReader();
                         reader.onload = (e) => {
-                            const message = {
+                            socket.emit('message', {
+                                ...baseMessage,
                                 type: 'file',
-                                content: messageInput.value || file.name,
+                                message: messageInput.value || file.name,
                                 file: {
                                     name: file.name,
                                     type: file.type,
                                     size: file.size,
                                     data: e.target.result
                                 }
-                            };
-                            ws.send(JSON.stringify(message));
+                            });
                             
                             // Reset UI
                             messageInput.value = '';
@@ -226,11 +257,11 @@
                     }
                 } else {
                     // Handle text messages
-                    const message = {
+                    socket.emit('message', {
+                        ...baseMessage,
                         type: 'text',
-                        content: messageInput.value
-                    };
-                    ws.send(JSON.stringify(message));
+                        message: messageInput.value
+                    });
                     
                     // Reset UI
                     messageInput.value = '';
@@ -246,24 +277,25 @@
             }
         }
 
+        // Global function to display messages
         function displayMessage(message) {
             const messagesDiv = document.getElementById('messages');
             const messageElement = document.createElement('div');
             messageElement.className = `message ${message.senderType}`;
 
             let content = '';
-            if (message.messageType === 'text') {
-                content = message.content;
-            } else if (message.messageType === 'image') {
+            if (message.type === 'text') {
+                content = message.message;
+            } else if (message.type === 'image') {
                 content = `
                     <img src="${message.fileUrl}" style="max-width: 200px;" 
                          onerror="this.onerror=null; this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22><text x=%2212%22 y=%2212%22>❌</text></svg>';"
                          onload="this.style.display='inline';" 
                          style="display: none;"><br>
-                    ${message.content}
+                    ${message.message}
                 `;
-            } else if (message.messageType === 'file') {
-                content = `<a href="${message.fileUrl}" target="_blank">${message.fileName}</a><br>${message.content}`;
+            } else if (message.type === 'file') {
+                content = `<a href="${message.fileUrl}" target="_blank">${message.fileName}</a><br>${message.message}`;
             }
 
             messageElement.innerHTML = `
@@ -276,10 +308,54 @@
             messagesDiv.appendChild(messageElement);
             messagesDiv.scrollTop = messagesDiv.scrollHeight;
         }
+    </script>
+
+    <!-- Module script for initialization -->
+    <script type="module">
+        const urlParams = new URLSearchParams(window.location.search);
+        const userToken = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY3YjhjMmZhMTJlNzQ1ZTgyYTJhYzAzZiIsInJvbGUiOiJ1c2VyIiwiZW1haWwiOiJjb250YWN0LnF1aWNrb2xpbmVAZ21haWwuY29tIiwiaWF0IjoxNzQwNjczODUxLCJleHAiOjE3NDEyNzg2NTF9.xIAfQx0rL9PaMmu0o2wvAFkqNhdFo9G1fS689kKjahw';
+
+        // Configuration
+        const config = {
+            development: {
+                wsUrl: 'http://localhost:3000'  // Changed to http for Socket.IO
+            },
+            production: {
+                wsUrl: 'https://quickotech-backend.onrender.com'  // Changed to https for Socket.IO
+            }
+        };
+
+        // Set environment (you can change this to 'production' when deploying)
+        const environment = 'development';
+        const baseUrl = config[environment].wsUrl;
+
+        // Set userType from URL parameter or default to 'user'
+        userType = urlParams.get('userType') || 'user';  // Assign to global variable
+        const token = userToken;
+
+        // Update connection status UI
+        function updateConnectionStatus(connected) {
+            const statusElement = document.getElementById('connectionStatus');
+            const indicator = document.querySelector('.status-indicator');
+            
+            if (connected) {
+                statusElement.textContent = 'Connected';
+                indicator.classList.add('status-connected');
+                indicator.classList.remove('status-disconnected');
+            } else {
+                statusElement.textContent = 'Disconnected';
+                indicator.classList.add('status-disconnected');
+                indicator.classList.remove('status-connected');
+            }
+        }
+
+        // Socket.IO connection
+        let reconnectAttempts = 0;
+        const maxReconnectAttempts = 5;
 
         async function loadChatHistory() {
             try {
-                const response = await fetch(`/api/v1/chat/history/${orderId}`, {
+                const response = await fetch(`${baseUrl}/api/v1/chat/history/${window.orderId}`, {
                     headers: {
                         'Authorization': `Bearer ${token}`
                     }
@@ -292,6 +368,63 @@
                 console.error('Error loading chat history:', error);
             }
         }
+
+        function connectSocket() {
+            updateConnectionStatus(false);
+            try {
+                console.log('Attempting to connect to Socket.IO...');
+                socket = io(baseUrl, {
+                    query: {
+                        orderId: window.orderId,
+                        token,
+                        userType
+                    },
+                    transports: ['websocket'],
+                    reconnection: true,
+                    reconnectionAttempts: maxReconnectAttempts,
+                    reconnectionDelay: 1000,
+                    reconnectionDelayMax: 10000
+                });
+
+                socket.on('connect', () => {
+                    console.log('Successfully connected to Socket.IO');
+                    updateConnectionStatus(true);
+                    reconnectAttempts = 0;
+                    
+                    // Join the chat room
+                    socket.emit('join', { room: window.orderId });
+                    
+                    // Load chat history
+                    loadChatHistory();
+                });
+
+                socket.on('disconnect', (reason) => {
+                    console.log('Socket.IO disconnected:', reason);
+                    updateConnectionStatus(false);
+                });
+
+                socket.on('connect_error', (error) => {
+                    console.error('Socket.IO connection error:', error);
+                    updateConnectionStatus(false);
+                });
+
+                socket.on('message', (data) => {
+                    console.log('Received message:', data);
+                    displayMessage(data);
+                });
+
+                socket.on('error', (error) => {
+                    console.error('Server error:', error);
+                    alert(error.message);
+                });
+            } catch (error) {
+                console.error('Error creating Socket.IO connection:', error);
+                updateConnectionStatus(false);
+            }
+        }
+
+        // Initial connection
+        connectSocket();
     </script>
 </body>
 </html>

@@ -20,6 +20,7 @@ const corsOptions = {
     origin: [
         'http://localhost:3000', 
         'http://localhost:3001',
+        'http://127.0.0.1:5500',  // Add development server
         'https://quickotech.vercel.app',
         'https://quickotech-admin.vercel.app',
         'https://quickoline.vercel.app',
@@ -122,6 +123,7 @@ mongoose.connect(process.env.MONGODB_URI)
         const blogRoutes = require('./src/api/v1/blog/blog.routes');
         const productRoutes = require('./src/api/v1/admin/routes/product.routes');
         const orderRoutes = require('./src/api/v1/cyberCafe/routes/order.routes');
+        const chatRoutes = require('./src/api/v1/chat/chat.routes');
 
         // Register routes
         app.use('/api/v1/auth', authRoutes);
@@ -129,6 +131,7 @@ mongoose.connect(process.env.MONGODB_URI)
         app.use('/api/v1/blog', blogRoutes);
         app.use('/api/v1/admin/products', productRoutes);
         app.use('/api/v1/cyber-cafe', orderRoutes);
+        app.use('/api/v1/chat', chatRoutes);
 
         // Test route
         app.get('/', (req, res) => {
