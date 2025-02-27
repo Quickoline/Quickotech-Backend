@@ -1,4 +1,6 @@
 const ProductService = require('../services/product.service');
+const Product = require('../model/product.model');
+const { ApiError } = require('../../../../middleware/error/errorTypes');
 
 class ProductController {
     // Create a new product
@@ -23,7 +25,12 @@ class ProductController {
             const result = await ProductService.getAllProducts(req.query);
             res.status(200).json({
                 success: true,
-                ...result
+                data: result.products,
+                pagination: {
+                    total: result.total,
+                    currentPage: result.currentPage,
+                    totalPages: result.totalPages
+                }
             });
         } catch (error) {
             res.status(500).json({
@@ -71,7 +78,7 @@ class ProductController {
             await ProductService.deleteProduct(req.params.id);
             res.status(200).json({
                 success: true,
-                data: {}
+                message: 'Product deleted successfully'
             });
         } catch (error) {
             res.status(error.message.includes('not found') ? 404 : 500).json({
@@ -81,7 +88,7 @@ class ProductController {
         }
     }
 
-    // Additional controller methods
+    // Search products
     async searchProducts(req, res) {
         try {
             const products = await ProductService.searchProducts(req.query.q);
@@ -97,6 +104,41 @@ class ProductController {
         }
     }
 
+    // Search all products with advanced filters
+    async searchAllProducts(req, res) {
+        try {
+            const result = await ProductService.searchAllProducts(req.query);
+            res.status(200).json({
+                success: true,
+                data: result.products,
+                pagination: result.pagination
+            });
+        } catch (error) {
+            res.status(500).json({
+                success: false,
+                error: error.message
+            });
+        }
+    }
+
+    // Search by category
+    async searchByCategory(req, res) {
+        try {
+            const result = await ProductService.searchByCategory(req.params.category, req.query);
+            res.status(200).json({
+                success: true,
+                data: result.products,
+                pagination: result.pagination
+            });
+        } catch (error) {
+            res.status(500).json({
+                success: false,
+                error: error.message
+            });
+        }
+    }
+
+    // Bulk create products
     async bulkCreateProducts(req, res) {
         try {
             const products = await ProductService.bulkCreateProducts(req.body);

@@ -1,4 +1,5 @@
 const Product = require('../model/product.model');
+const { ApiError } = require('../../../../middleware/error/errorTypes');
 
 class ProductService {
     // Create Product
@@ -17,18 +18,17 @@ class ProductService {
             const {
                 page = 1,
                 limit = 10,
-                sort = 'createdAt',
+                sort = '-createdAt',
                 category,
                 search,
                 minPrice,
                 maxPrice
             } = query;
 
-            // Build filter object
             const filter = {};
             
             if (category) {
-                filter.category = category;
+                filter.category = { $regex: category, $options: 'i' };
             }
 
             if (search) {
@@ -40,24 +40,22 @@ class ProductService {
 
             if (minPrice || maxPrice) {
                 filter.price = {};
-                if (minPrice) filter.price.$gte = minPrice;
-                if (maxPrice) filter.price.$lte = maxPrice;
+                if (minPrice) filter.price.$gte = parseFloat(minPrice);
+                if (maxPrice) filter.price.$lte = parseFloat(maxPrice);
             }
 
-            // Execute query with pagination
             const products = await Product.find(filter)
                 .sort(sort)
-                .limit(limit * 1)
-                .skip((page - 1) * limit)
+                .limit(parseInt(limit))
+                .skip((parseInt(page) - 1) * parseInt(limit))
                 .exec();
 
-            // Get total documents
             const total = await Product.countDocuments(filter);
 
             return {
                 products,
                 totalPages: Math.ceil(total / limit),
-                currentPage: page,
+                currentPage: parseInt(page),
                 total
             };
         } catch (error) {
@@ -81,22 +79,15 @@ class ProductService {
     // Update Product
     async updateProduct(id, updateData) {
         try {
-            const product = await Product.findById(id);
+            const product = await Product.findByIdAndUpdate(
+                id,
+                updateData,
+                { new: true, runValidators: true }
+            );
             if (!product) {
                 throw new Error('Product not found');
             }
-
-            // Validate update data
-            if (updateData.price) {
-                // Add price validation logic if needed
-                if (isNaN(updateData.price)) {
-                    throw new Error('Invalid price format');
-                }
-            }
-
-            // Update the product
-            Object.assign(product, updateData);
-            return await product.save();
+            return product;
         } catch (error) {
             throw new Error(`Error updating product: ${error.message}`);
         }
@@ -105,32 +96,27 @@ class ProductService {
     // Delete Product
     async deleteProduct(id) {
         try {
-            const product = await Product.findById(id);
+            const product = await Product.findByIdAndDelete(id);
             if (!product) {
                 throw new Error('Product not found');
             }
-            await product.remove();
             return true;
         } catch (error) {
             throw new Error(`Error deleting product: ${error.message}`);
         }
     }
 
-    // Additional business logic methods
-    async getProductsByCategory(category) {
-        try {
-            return await Product.find({ category });
-        } catch (error) {
-            throw new Error(`Error fetching products by category: ${error.message}`);
-        }
-    }
-
+    // Search products
     async searchProducts(searchTerm) {
         try {
+            if (!searchTerm) {
+                return [];
+            }
             return await Product.find({
                 $or: [
                     { title: { $regex: searchTerm, $options: 'i' } },
-                    { description: { $regex: searchTerm, $options: 'i' } }
+                    { description: { $regex: searchTerm, $options: 'i' } },
+                    { category: { $regex: searchTerm, $options: 'i' } }
                 ]
             });
         } catch (error) {
@@ -138,26 +124,148 @@ class ProductService {
         }
     }
 
-    // Bulk operations
-    async bulkCreateProducts(productsData) {
+    // Search all products with advanced filters
+    async searchAllProducts(query) {
         try {
-            return await Product.insertMany(productsData);
+            const {
+                keyword = '',
+                priceRange = '',
+                sort = 'newest',
+                page = 1,
+                limit = 10
+            } = query;
+
+            const filter = {};
+            
+            if (keyword) {
+                filter.$or = [
+                    { title: { $regex: keyword, $options: 'i' } },
+                    { description: { $regex: keyword, $options: 'i' } },
+                    { category: { $regex: keyword, $options: 'i' } }
+                ];
+            }
+
+            if (priceRange) {
+                const [min, max] = priceRange.split('-').map(Number);
+                if (!isNaN(min) && !isNaN(max)) {
+                    filter.price = { $gte: min, $lte: max };
+                }
+            }
+
+            let sortOption = {};
+            switch (sort) {
+                case 'price_low':
+                    sortOption = { price: 1 };
+                    break;
+                case 'price_high':
+                    sortOption = { price: -1 };
+                    break;
+                case 'oldest':
+                    sortOption = { createdAt: 1 };
+                    break;
+                case 'newest':
+                default:
+                    sortOption = { createdAt: -1 };
+            }
+
+            const products = await Product.find(filter)
+                .sort(sortOption)
+                .skip((parseInt(page) - 1) * parseInt(limit))
+                .limit(parseInt(limit));
+
+            const total = await Product.countDocuments(filter);
+
+            return {
+                products,
+                pagination: {
+                    total,
+                    currentPage: parseInt(page),
+                    totalPages: Math.ceil(total / parseInt(limit)),
+                    hasMore: page < Math.ceil(total / parseInt(limit))
+                }
+            };
         } catch (error) {
-            throw new Error(`Error bulk creating products: ${error.message}`);
+            throw new Error(`Error searching products: ${error.message}`);
         }
     }
 
-    async bulkUpdateProducts(updates) {
+    // Search by category
+    async searchByCategory(category, query) {
         try {
-            const bulkOps = updates.map(update => ({
-                updateOne: {
-                    filter: { _id: update.id },
-                    update: { $set: update.data }
+            const {
+                keyword = '',
+                priceRange = '',
+                sort = 'newest',
+                page = 1,
+                limit = 10
+            } = query;
+
+            const filter = {
+                category: { $regex: new RegExp(category, 'i') }
+            };
+
+            if (keyword) {
+                filter.$and = [
+                    { category: { $regex: new RegExp(category, 'i') } },
+                    {
+                        $or: [
+                            { title: { $regex: keyword, $options: 'i' } },
+                            { description: { $regex: keyword, $options: 'i' } }
+                        ]
+                    }
+                ];
+            }
+
+            if (priceRange) {
+                const [min, max] = priceRange.split('-').map(Number);
+                if (!isNaN(min) && !isNaN(max)) {
+                    filter.price = { $gte: min, $lte: max };
                 }
-            }));
-            return await Product.bulkWrite(bulkOps);
+            }
+
+            let sortOption = {};
+            switch (sort) {
+                case 'price_low':
+                    sortOption = { price: 1 };
+                    break;
+                case 'price_high':
+                    sortOption = { price: -1 };
+                    break;
+                case 'oldest':
+                    sortOption = { createdAt: 1 };
+                    break;
+                case 'newest':
+                default:
+                    sortOption = { createdAt: -1 };
+            }
+
+            const products = await Product.find(filter)
+                .sort(sortOption)
+                .skip((parseInt(page) - 1) * parseInt(limit))
+                .limit(parseInt(limit));
+
+            const total = await Product.countDocuments(filter);
+
+            return {
+                products,
+                pagination: {
+                    total,
+                    currentPage: parseInt(page),
+                    totalPages: Math.ceil(total / parseInt(limit)),
+                    hasMore: page < Math.ceil(total / parseInt(limit))
+                }
+            };
         } catch (error) {
-            throw new Error(`Error bulk updating products: ${error.message}`);
+            throw new Error(`Error searching products by category: ${error.message}`);
+        }
+    }
+
+    // Bulk create products
+    async bulkCreateProducts(productsData) {
+        try {
+            return await Product.insertMany(productsData, { ordered: false });
+        } catch (error) {
+            throw new Error(`Error bulk creating products: ${error.message}`);
         }
     }
 }

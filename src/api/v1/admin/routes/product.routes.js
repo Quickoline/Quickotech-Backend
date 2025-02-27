@@ -20,7 +20,7 @@ const { hasRole } = require('../../../../middleware/auth/roleMiddleware');
  *           type: string
  *           description: Product description
  *         price:
- *           type: string
+ *           type: number
  *           description: Product price
  *         category:
  *           type: string
@@ -44,16 +44,214 @@ const { hasRole } = require('../../../../middleware/auth/roleMiddleware');
  *         additionalFields:
  *           type: object
  *           description: Additional fields
+ * 
+ *   parameters:
+ *     searchQuery:
+ *       in: query
+ *       name: q
+ *       schema:
+ *         type: string
+ *       description: Search query string
+ *     category:
+ *       in: query
+ *       name: category
+ *       schema:
+ *         type: string
+ *       description: Product category to filter by
+ *     minPrice:
+ *       in: query
+ *       name: minPrice
+ *       schema:
+ *         type: number
+ *       description: Minimum price filter
+ *     maxPrice:
+ *       in: query
+ *       name: maxPrice
+ *       schema:
+ *         type: number
+ *       description: Maximum price filter
+ *     sortBy:
+ *       in: query
+ *       name: sortBy
+ *       schema:
+ *         type: string
+ *         enum: [price_asc, price_desc, title_asc, title_desc, newest, oldest]
+ *       description: Sort products by specific fields
+ *     page:
+ *       in: query
+ *       name: page
+ *       schema:
+ *         type: integer
+ *         minimum: 1
+ *         default: 1
+ *       description: Page number for pagination
+ *     limit:
+ *       in: query
+ *       name: limit
+ *       schema:
+ *         type: integer
+ *         minimum: 1
+ *         maximum: 100
+ *         default: 10
+ *       description: Number of items per page
  */
 
+// Search routes (must be before /:id to prevent conflicts)
+/**
+ * @swagger
+ * /api/v1/admin/products/search/all:
+ *   get:
+ *     summary: Search products across all categories
+ *     tags: [Products]
+ *     parameters:
+ *       - name: keyword
+ *         in: query
+ *         schema:
+ *           type: string
+ *         description: Search keyword
+ *       - name: priceRange
+ *         in: query
+ *         schema:
+ *           type: string
+ *         description: Price range in format min-max
+ *       - name: sort
+ *         in: query
+ *         schema:
+ *           type: string
+ *           enum: [price_low, price_high, newest, oldest]
+ *         description: Sort order
+ *       - name: page
+ *         in: query
+ *         schema:
+ *           type: integer
+ *           default: 1
+ *         description: Page number
+ *       - name: limit
+ *         in: query
+ *         schema:
+ *           type: integer
+ *           default: 10
+ *         description: Items per page
+ *     responses:
+ *       200:
+ *         description: Success
+ */
+router.get('/search/all', ProductController.searchAllProducts);
+
+/**
+ * @swagger
+ * /api/v1/admin/products/search/{category}:
+ *   get:
+ *     summary: Search products in specific category
+ *     tags: [Products]
+ *     parameters:
+ *       - name: category
+ *         in: path
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Category to search in
+ *       - name: keyword
+ *         in: query
+ *         schema:
+ *           type: string
+ *         description: Search keyword
+ *       - name: priceRange
+ *         in: query
+ *         schema:
+ *           type: string
+ *         description: Price range in format min-max
+ *       - name: sort
+ *         in: query
+ *         schema:
+ *           type: string
+ *           enum: [price_low, price_high, newest, oldest]
+ *         description: Sort order
+ *     responses:
+ *       200:
+ *         description: Success
+ */
+router.get('/search/:category', ProductController.searchByCategory);
+
+/**
+ * @swagger
+ * /api/v1/admin/products/search:
+ *   get:
+ *     summary: Basic product search
+ *     tags: [Products]
+ *     parameters:
+ *       - name: q
+ *         in: query
+ *         schema:
+ *           type: string
+ *         description: Search query
+ *     responses:
+ *       200:
+ *         description: Success
+ */
+router.get('/search', ProductController.searchProducts);
+
+// Public routes
+/**
+ * @swagger
+ * /api/v1/admin/products:
+ *   get:
+ *     summary: Get all products
+ *     tags: [Products]
+ *     parameters:
+ *       - name: page
+ *         in: query
+ *         schema:
+ *           type: integer
+ *         description: Page number
+ *       - name: limit
+ *         in: query
+ *         schema:
+ *           type: integer
+ *         description: Items per page
+ *       - name: sort
+ *         in: query
+ *         schema:
+ *           type: string
+ *         description: Sort field
+ *     responses:
+ *       200:
+ *         description: Success
+ */
+router.get('/', ProductController.getAllProducts);
+
+/**
+ * @swagger
+ * /api/v1/admin/products/{id}:
+ *   get:
+ *     summary: Get product by ID
+ *     tags: [Products]
+ *     parameters:
+ *       - name: id
+ *         in: path
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Product ID
+ *     responses:
+ *       200:
+ *         description: Success
+ *       404:
+ *         description: Product not found
+ */
+router.get('/:id', ProductController.getProductById);
+
+// Protected routes
+router.use(verifyToken);
+router.use(hasRole('senior_admin'));
+
+// Admin routes
 /**
  * @swagger
  * /api/v1/admin/products:
  *   post:
- *     summary: Create a product (Senior Admin only)
+ *     summary: Create a new product
  *     tags: [Products]
- *     security:
- *       - bearerAuth: []
  *     requestBody:
  *       required: true
  *       content:
@@ -62,54 +260,59 @@ const { hasRole } = require('../../../../middleware/auth/roleMiddleware');
  *             $ref: '#/components/schemas/Product'
  *     responses:
  *       201:
- *         description: Product created
- *       401:
- *         description: Unauthorized
- *       403:
- *         description: Insufficient privileges
+ *         description: Product created successfully
+ *       400:
+ *         description: Invalid request
  */
-
-// Public routes (no authentication required)
-router.get('/', ProductController.getAllProducts.bind(ProductController));
-router.get('/:id', ProductController.getProductById.bind(ProductController));
-router.get('/search', ProductController.searchProducts.bind(ProductController));
-
-// Protected routes below this line
-router.use(verifyToken);
-router.use(hasRole('senior_admin'));
-
-// Admin routes (require authentication and senior_admin role)
-router.post('/', ProductController.createProduct.bind(ProductController));
-router.put('/:id', ProductController.updateProduct.bind(ProductController));
-router.delete('/:id', ProductController.deleteProduct.bind(ProductController));
-router.post('/bulk', ProductController.bulkCreateProducts.bind(ProductController));
+router.post('/', ProductController.createProduct);
 
 /**
  * @swagger
- * /api/v1/admin/products:
- *   get:
- *     summary: Get all products
+ * /api/v1/admin/products/{id}:
+ *   put:
+ *     summary: Update a product
  *     tags: [Products]
  *     parameters:
- *       - in: query
- *         name: page
- *         schema:
- *           type: integer
- *         description: Page number
- *       - in: query
- *         name: limit
- *         schema:
- *           type: integer
- *         description: Number of items per page
- *       - in: query
- *         name: sort
+ *       - name: id
+ *         in: path
+ *         required: true
  *         schema:
  *           type: string
- *         description: Sort field
+ *         description: Product ID
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/Product'
  *     responses:
  *       200:
- *         description: List of products
+ *         description: Product updated successfully
+ *       404:
+ *         description: Product not found
  */
+router.put('/:id', ProductController.updateProduct);
+
+/**
+ * @swagger
+ * /api/v1/admin/products/{id}:
+ *   delete:
+ *     summary: Delete a product
+ *     tags: [Products]
+ *     parameters:
+ *       - name: id
+ *         in: path
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Product ID
+ *     responses:
+ *       200:
+ *         description: Product deleted successfully
+ *       404:
+ *         description: Product not found
+ */
+router.delete('/:id', ProductController.deleteProduct);
 
 /**
  * @swagger
@@ -131,5 +334,6 @@ router.post('/bulk', ProductController.bulkCreateProducts.bind(ProductController
  *       400:
  *         description: Invalid request
  */
+router.post('/bulk', ProductController.bulkCreateProducts);
 
 module.exports = router;
