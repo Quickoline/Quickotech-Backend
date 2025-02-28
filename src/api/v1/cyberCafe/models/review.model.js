@@ -58,7 +58,17 @@ const ReviewSchema = new mongoose.Schema({
   },
   status: {
     type: String,
-    enum: ['pending', 'processing', 'completed', 'rejected', 'finalized'],
+    enum: [
+      'pending',
+      'processing',
+      'completed',
+      'rejected',
+      'finalized',
+      'cancelled',
+      'approved',
+      'payment_pending',
+      'payment_completed'
+    ],
     default: 'pending'
   },
   trackingStatus: {
@@ -78,14 +88,12 @@ const ReviewSchema = new mongoose.Schema({
       // Approval States
       'Pending Approval',
       'Approved',
-      'Processing Started',
       
       // Cancellation States
       'Cancelled',
       
       // Completion States
-      'Completed Successfully',
-
+      'Completed Successfully'
     ],
     default: 'Order Placed'
   },

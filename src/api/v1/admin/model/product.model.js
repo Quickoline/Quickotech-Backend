@@ -50,41 +50,21 @@ const ProductSchema = new mongoose.Schema({
       default: false
     },
     compressionSettings: {
-      maxSizeInMB: {
+      fileSize: {
         type: Number,
-        required: [true, 'Maximum file size is required'],
-        min: [0.005, 'File size must be at least 5KB'],
-        max: [25, 'File size cannot exceed 25MB'],
-        default: 5
+        required: [true, 'File size is required'],
+        default: 5  // 5MB
       },
-      minSizeInMB: {
-        type: Number,
-        required: [true, 'Minimum file size is required'],
-        min: [0.005, 'File size must be at least 5KB'],
-        default: 0.005,  // 5KB in MB
-        validate: {
-          validator: function(v) {
-            // Ensure minSize is less than maxSize
-            return v <= this.parent.compressionSettings.maxSizeInMB;
-          },
-          message: 'Minimum size must be less than maximum size'
-        }
-      },
-      preferredFormat: {
+      format: {
         type: String,
-        enum: ['jpg', 'jpeg', 'png', 'pdf', 'any'],
-        default: 'any'
-      },
-      quality: {
-        type: Number,
-        min: [1, 'Quality must be between 1 and 100'],
-        max: [100, 'Quality must be between 1 and 100'],
-        default: 80
+        required: [true, 'Format is required'],
+        enum: ['jpg', 'jpeg', 'png', 'pdf'],
+        default: 'pdf'
       },
       allowedFormats: [{
         type: String,
         enum: ['jpg', 'jpeg', 'png', 'pdf', 'doc', 'docx'],
-        default: ['jpg', 'jpeg', 'png', 'pdf']
+        default: ['pdf']
       }]
     }
   }],

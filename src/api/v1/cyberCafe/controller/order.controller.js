@@ -721,7 +721,6 @@ const orderController = {
                 trackingStatus: updateFields.trackingStatus || order.trackingStatus,
                 chatStatus: updateFields.chatStatus || order.chatStatus,
                 approveStatus: updateFields.approveStatus || order.approveStatus,
-                updatedBy: req.user.id,
                 updatedAt: new Date()
             };
 

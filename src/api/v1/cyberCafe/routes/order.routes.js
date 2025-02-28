@@ -241,7 +241,12 @@ const upload = multer({
  *         description: Order not found
  */
 
-// Protected routes
+// Public route for updating order status
+router.patch('/orders/:orderId/status', (req, res) => {
+    orderController.updateOrderStatuses(req, res);
+});
+
+// Protected routes below this middleware
 router.use(verifyToken);
 
 // Create order route with file upload
@@ -283,12 +288,12 @@ router.put('/orders/:orderId', hasRole('app_admin'), (req, res) => {
 });
 
 // Update order status
-router.put('/orders/:orderId/status', verifyToken, (req, res) => {
+router.put('/orders/:orderId/status', (req, res) => {
     orderController.updateOrderStatus(req, res);
 });
 
 // Get order status history
-router.get('/orders/:orderId/status-history', verifyToken, (req, res) => {
+router.get('/orders/:orderId/status-history', (req, res) => {
     orderController.getOrderStatusHistory(req, res);
 });
 
@@ -304,24 +309,12 @@ const ensureRegularUser = (req, res, next) => {
 };
 
 // Finalize order route - only for regular users
-router.post('/orders/:orderId/finalize', verifyToken, ensureRegularUser, (req, res) => {
+router.post('/orders/:orderId/finalize', ensureRegularUser, (req, res) => {
     orderController.finalizeOrder(req, res);
 });
 
-router.put('/orders/:orderId/ocr', 
-    verifyToken, 
-    hasRole('app_admin'), 
-    (req, res) => {
-        orderController.updateOcrData(req, res);
-    }
-);
-
-router.patch('/orders/:orderId/status', 
-    verifyToken, 
-    hasRole('app_admin'), 
-    (req, res) => {
-        orderController.updateOrderStatuses(req, res);
-    }
-);
+router.put('/orders/:orderId/ocr', hasRole('app_admin'), (req, res) => {
+    orderController.updateOcrData(req, res);
+});
 
 module.exports = router;
