@@ -127,7 +127,14 @@ const orderController = {
     // Get my orders
     getMyOrders: async (req, res) => {
         try {
-            const orders = await orderService.getOrderHistory(req.user.id, req.query);
+            const orders = await Review.find({ userId: req.user.id })
+                .populate({
+                    path: 'serviceId',
+                    select: '_id title description price category requiredDocuments customDropdowns applicationDetails additionalFields'
+                })
+                .populate('userId', '-password')
+                .sort({ createdAt: -1 });
+
             res.json({
                 success: true,
                 data: orders
@@ -144,7 +151,10 @@ const orderController = {
     getOrderById: async (req, res) => {
         try {
             const order = await Review.findById(req.params.orderId)
-                .populate('serviceId')
+                .populate({
+                    path: 'serviceId',
+                    select: '_id title description price category requiredDocuments customDropdowns applicationDetails additionalFields'
+                })
                 .populate('userId', '-password');
                 
             if (!order) {
@@ -167,7 +177,10 @@ const orderController = {
     getAllOrders: async (req, res) => {
         try {
             const orders = await Review.find()
-                .populate('serviceId')
+                .populate({
+                    path: 'serviceId',
+                    select: '_id title description price category requiredDocuments customDropdowns applicationDetails additionalFields'
+                })
                 .populate('userId', '-password')
                 .sort({ createdAt: -1 });
 

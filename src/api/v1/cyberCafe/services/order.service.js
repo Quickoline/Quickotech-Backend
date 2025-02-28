@@ -66,7 +66,10 @@ class OrderService {
 
             const savedOrder = await reviewOrder.save();
             return await Review.findById(savedOrder._id)
-                .populate('serviceId')
+                .populate({
+                    path: 'serviceId',
+                    select: '_id title description price category requiredDocuments customDropdowns applicationDetails additionalFields'
+                })
                 .populate('userId', '-password');
         } catch (error) {
             console.error('Order creation error:', error);
