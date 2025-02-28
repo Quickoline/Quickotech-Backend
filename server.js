@@ -124,6 +124,7 @@ mongoose.connect(process.env.MONGODB_URI)
         const productRoutes = require('./src/api/v1/admin/routes/product.routes');
         const orderRoutes = require('./src/api/v1/cyberCafe/routes/order.routes');
         const chatRoutes = require('./src/api/v1/chat/chat.routes');
+        const regexTemplateRoutes = require('./src/api/v1/admin/routes/regexTemplate.routes');
 
         // Register routes
         app.use('/api/v1/auth', authRoutes);
@@ -132,6 +133,7 @@ mongoose.connect(process.env.MONGODB_URI)
         app.use('/api/v1/admin/products', productRoutes);
         app.use('/api/v1/cyber-cafe', orderRoutes);
         app.use('/api/v1/chat', chatRoutes);
+        app.use('/api/v1/admin/regex-templates', regexTemplateRoutes);
 
         // Test route
         app.get('/', (req, res) => {
