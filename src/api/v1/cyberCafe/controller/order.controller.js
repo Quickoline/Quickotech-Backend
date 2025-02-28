@@ -19,10 +19,6 @@ const orderController = {
                 throw new Error('serviceId is required');
             }
 
-            if (!req.files || req.files.length === 0) {
-                throw new Error('At least one document file is required');
-            }
-
             // First, get the service to access its additionalFields configuration
             const service = await Product.findById(req.body.serviceId);
             if (!service) {

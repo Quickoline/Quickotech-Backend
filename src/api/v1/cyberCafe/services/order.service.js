@@ -24,39 +24,24 @@ class OrderService {
             // Validate service
             const service = await this.validateServiceAndDocuments(serviceId, documents);
 
-            // Process and upload documents if present
+            // Process documents (files are optional)
             let uploadedDocs = [];
             if (documents && documents.length > 0) {
-                uploadedDocs = await Promise.all(
-                    documents.map(async (doc, index) => {
-                        try {
-                            // Find the corresponding file
-                            const file = files?.find(f => f.fieldname === `documents[${index}][file]`);
-                            let docData = {
-                                documentName: doc.documentName,
-                                ocrData: doc.ocrData || {}
-                            };
-
-                            if (file) {
-                                // Handle P2P file upload
-                                // Note: Implement your P2P upload logic here
-                                // docData.p2pHash = p2pResult.hash;
-                                // docData.p2pUrl = p2pResult.url;
-                            }
-
-                            return docData;
-                        } catch (error) {
-                            console.warn(`Warning: Failed to process document ${doc.documentName}: ${error.message}`);
-                            return {
-                                documentName: doc.documentName,
-                                ocrData: doc.ocrData || {}
-                            };
-                        }
-                    })
-                );
+                uploadedDocs = documents.map(doc => ({
+                    documentName: doc.documentName,
+                    ocrData: doc.ocrData || {},
+                    // Only add file-related data if a file exists
+                    ...(files?.find(f => f.fieldname === `documents[${documents.indexOf(doc)}][file]`) 
+                        ? {
+                            // Add file-related fields if needed
+                            // p2pHash: null,
+                            // p2pUrl: null
+                          }
+                        : {})
+                }));
             }
 
-            console.log('Documents processed successfully:', uploadedDocs);
+            console.log('Documents processed:', uploadedDocs);
             
             // Ensure additionalFields is properly formatted
             const processedAdditionalFields = Array.isArray(additionalFields) 

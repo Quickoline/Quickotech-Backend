@@ -16,6 +16,10 @@ const DocumentSchema = new mongoose.Schema({
   ocrData: {
     type: mongoose.Schema.Types.Mixed,
     default: {}
+  },
+  fileUploaded: {
+    type: Boolean,
+    default: false
   }
 });
 
