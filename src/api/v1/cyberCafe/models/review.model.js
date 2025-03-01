@@ -163,45 +163,43 @@ ReviewSchema.pre('save', function(next) {
   // Process additional fields if they are being modified or if this is a new document
   if (this.isModified('additionalFields') || this.isNew) {
     try {
-      // If additionalFields is a string (JSON), parse it
-      if (typeof this.additionalFields === 'string') {
+      let fields = this.additionalFields;
+
+      // If it's a string, try to parse it
+      if (typeof fields === 'string') {
         try {
-          this.additionalFields = JSON.parse(this.additionalFields);
+          fields = JSON.parse(fields);
         } catch (e) {
           console.error('Failed to parse additionalFields string:', e);
+          fields = {};
         }
       }
 
-      // Handle object format from Flutter app
-      if (this.additionalFields && typeof this.additionalFields === 'object' && !Array.isArray(this.additionalFields)) {
-        const formattedFields = [];
-        for (const [key, value] of Object.entries(this.additionalFields)) {
-          formattedFields.push({
-            fieldName: key,
-            fieldValue: value,
-            fieldType: typeof value === 'number' ? 'number' : 'text'
-          });
-        }
-        this.additionalFields = formattedFields;
+      // Convert object to array format if needed
+      if (fields && typeof fields === 'object' && !Array.isArray(fields)) {
+        fields = Object.entries(fields).map(([key, value]) => ({
+          fieldName: key,
+          fieldValue: value,
+          fieldType: typeof value === 'number' ? 'number' : 'text'
+        }));
       }
 
-      // Ensure additionalFields is always an array
-      if (!Array.isArray(this.additionalFields)) {
-        this.additionalFields = [];
+      // Ensure it's an array
+      if (!Array.isArray(fields)) {
+        fields = [];
       }
 
-      // Validate and format each field
-      this.additionalFields = this.additionalFields.map(field => {
-        // Handle case where field might be a plain object
-        if (field && typeof field === 'object') {
-          return {
-            fieldName: field.fieldName || '',
-            fieldValue: field.fieldValue || '',
-            fieldType: field.fieldType || 'text'
-          };
-        }
-        return field;
-      }).filter(field => field && field.fieldName && field.fieldValue); // Remove any invalid fields
+      // Format and validate each field
+      this.additionalFields = fields
+        .filter(field => field && typeof field === 'object')
+        .map(field => ({
+          fieldName: field.fieldName || '',
+          fieldValue: field.fieldValue || '',
+          fieldType: field.fieldType || 'text'
+        }))
+        .filter(field => field.fieldName && field.fieldValue);
+
+      console.log('Processed additionalFields:', this.additionalFields);
     } catch (error) {
       console.error('Error processing additional fields:', error);
       this.additionalFields = [];

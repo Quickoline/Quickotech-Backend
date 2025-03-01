@@ -24,13 +24,12 @@ class OrderService {
             // Validate service
             const service = await this.validateServiceAndDocuments(serviceId, documents);
 
-            // Process documents (files are optional)
+            // Process documents
             let uploadedDocs = [];
             if (documents && documents.length > 0) {
                 uploadedDocs = documents.map(doc => ({
                     documentName: doc.documentName,
                     ocrData: doc.ocrData || {},
-                    // Only add file-related data if a file exists
                     ...(files?.find(f => f.fieldname === `documents[${documents.indexOf(doc)}][file]`) 
                         ? {
                             // Add file-related fields if needed
@@ -43,14 +42,17 @@ class OrderService {
 
             console.log('Documents processed:', uploadedDocs);
             
-            // Ensure additionalFields is properly formatted
-            const processedAdditionalFields = Array.isArray(additionalFields) 
-                ? additionalFields.map(field => ({
+            // Process additional fields
+            let processedAdditionalFields = [];
+            if (additionalFields && additionalFields.length > 0) {
+                processedAdditionalFields = additionalFields.map(field => ({
                     fieldName: field.fieldName,
                     fieldValue: field.fieldValue,
                     fieldType: field.fieldType || 'text'
-                }))
-                : [];
+                }));
+            }
+
+            console.log('Additional fields processed:', processedAdditionalFields);
 
             // Create review order
             const reviewOrder = new Review({

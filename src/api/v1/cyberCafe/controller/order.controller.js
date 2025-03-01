@@ -25,13 +25,6 @@ const orderController = {
                 throw new Error('Service not found');
             }
 
-            // Get additionalFields configuration from service
-            const serviceFields = service.additionalFields instanceof Map 
-                ? Object.fromEntries(service.additionalFields)
-                : (typeof service.additionalFields === 'object' ? service.additionalFields : {});
-
-            console.log('Service Fields:', serviceFields);
-
             // Parse documents array from the request body
             let documents = [];
             if (typeof req.body.documents === 'string') {
@@ -50,47 +43,32 @@ const orderController = {
             }
 
             // Parse additional fields from the request body
-            const additionalFields = [];
-
-            // Log all request body keys for debugging
-            console.log('All request body keys:', Object.keys(req.body));
-
-            // Process additional fields from the request body
-            Object.keys(req.body).forEach(key => {
-                // Match both array format and direct field format
-                if (key.startsWith('additionalFields[') || key === 'emergency_contact') {
-                    let fieldName, fieldValue;
-                    
-                    if (key.startsWith('additionalFields[')) {
-                        const matches = key.match(/additionalFields\[(\d+)\]\[(\w+)\]/);
-                        if (matches) {
-                            const [, index, prop] = matches;
-                            fieldName = req.body[`additionalFields[${index}][fieldName]`] || prop;
-                            fieldValue = req.body[`additionalFields[${index}][fieldValue]`];
-                        }
-                    } else {
-                        fieldName = key;
-                        fieldValue = req.body[key];
-                    }
-
-                    console.log(`Processing field - Name: ${fieldName}, Value: ${fieldValue}`);
-
-                    // Check if this field is configured in the service
-                    const fieldConfig = serviceFields[fieldName];
-                    if (fieldName && fieldValue && fieldConfig) {
-                        console.log('Field config:', fieldConfig);
-
-                        // Check if this field hasn't been added yet
-                        if (!additionalFields.some(f => f.fieldName === fieldName)) {
-                            additionalFields.push({
+            let additionalFields = [];
+            if (req.body.additionalFields) {
+                try {
+                    // If it's a string (JSON), parse it
+                    if (typeof req.body.additionalFields === 'string') {
+                        const parsedFields = JSON.parse(req.body.additionalFields);
+                        if (typeof parsedFields === 'object' && !Array.isArray(parsedFields)) {
+                            additionalFields = Object.entries(parsedFields).map(([fieldName, fieldValue]) => ({
                                 fieldName,
-                                fieldValue: fieldValue.trim(),
-                                fieldType: fieldConfig.type || 'text'
-                            });
+                                fieldValue,
+                                fieldType: typeof fieldValue === 'number' ? 'number' : 'text'
+                            }));
                         }
                     }
+                    // If it's already an object
+                    else if (typeof req.body.additionalFields === 'object' && !Array.isArray(req.body.additionalFields)) {
+                        additionalFields = Object.entries(req.body.additionalFields).map(([fieldName, fieldValue]) => ({
+                            fieldName,
+                            fieldValue,
+                            fieldType: typeof fieldValue === 'number' ? 'number' : 'text'
+                        }));
+                    }
+                } catch (error) {
+                    console.error('Error parsing additional fields:', error);
                 }
-            });
+            }
 
             console.log('Processed additionalFields:', additionalFields);
 
