@@ -160,32 +160,67 @@ ReviewSchema.pre('save', function(next) {
     }
   }
 
-  // Process additional fields if they are being modified
-  if (this.isModified('additionalFields')) {
-    // Ensure additionalFields is always an array
-    if (!Array.isArray(this.additionalFields)) {
-      if (typeof this.additionalFields === 'object') {
-        // Convert object to array format
-        this.additionalFields = Object.entries(this.additionalFields).map(([fieldName, fieldValue]) => ({
-          fieldName,
-          fieldValue,
-          fieldType: typeof fieldValue
-        }));
-      } else {
+  // Process additional fields if they are being modified or if this is a new document
+  if (this.isModified('additionalFields') || this.isNew) {
+    try {
+      // If additionalFields is a string (JSON), parse it
+      if (typeof this.additionalFields === 'string') {
+        try {
+          this.additionalFields = JSON.parse(this.additionalFields);
+        } catch (e) {
+          console.error('Failed to parse additionalFields string:', e);
+        }
+      }
+
+      // Handle object format from Flutter app
+      if (this.additionalFields && typeof this.additionalFields === 'object' && !Array.isArray(this.additionalFields)) {
+        const formattedFields = [];
+        for (const [key, value] of Object.entries(this.additionalFields)) {
+          formattedFields.push({
+            fieldName: key,
+            fieldValue: value,
+            fieldType: typeof value === 'number' ? 'number' : 'text'
+          });
+        }
+        this.additionalFields = formattedFields;
+      }
+
+      // Ensure additionalFields is always an array
+      if (!Array.isArray(this.additionalFields)) {
         this.additionalFields = [];
       }
-    }
 
-    // Validate and format each field
-    this.additionalFields = this.additionalFields.map(field => {
-      if (typeof field === 'object' && !field.fieldType) {
-        field.fieldType = typeof field.fieldValue;
-      }
-      return field;
-    });
+      // Validate and format each field
+      this.additionalFields = this.additionalFields.map(field => {
+        // Handle case where field might be a plain object
+        if (field && typeof field === 'object') {
+          return {
+            fieldName: field.fieldName || '',
+            fieldValue: field.fieldValue || '',
+            fieldType: field.fieldType || 'text'
+          };
+        }
+        return field;
+      }).filter(field => field && field.fieldName && field.fieldValue); // Remove any invalid fields
+    } catch (error) {
+      console.error('Error processing additional fields:', error);
+      this.additionalFields = [];
+    }
   }
 
   next();
 });
+
+// Add a method to properly format additional fields
+ReviewSchema.methods.formatAdditionalFields = function() {
+  if (typeof this.additionalFields === 'string') {
+    try {
+      return JSON.parse(this.additionalFields);
+    } catch (e) {
+      return [];
+    }
+  }
+  return this.additionalFields;
+};
 
 module.exports = mongoose.model('Review', ReviewSchema);
