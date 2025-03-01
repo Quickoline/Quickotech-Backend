@@ -3,6 +3,7 @@ const router = express.Router();
 const orderController = require('../controller/order.controller');
 const { verifyToken } = require('../../../../middleware/auth/authMiddleware');
 const { hasRole } = require('../../../../middleware/auth/roleMiddleware');
+const { encryptResponse, decryptRequest } = require('../../../../middleware/encryption/encryptionMiddleware');
 const multer = require('multer');
 
 // Configure multer for handling file uploads
@@ -13,6 +14,9 @@ const upload = multer({
         files: 10 // Maximum 10 files
     }
 });
+
+// Apply encryption middleware to all routes
+router.use(encryptResponse);
 
 /**
  * @swagger
@@ -241,12 +245,7 @@ const upload = multer({
  *         description: Order not found
  */
 
-// Public route for updating order status
-router.patch('/orders/:orderId/status', (req, res) => {
-    orderController.updateOrderStatuses(req, res);
-});
-
-// Protected routes below this middleware
+// Protected routes
 router.use(verifyToken);
 
 // Create order route with file upload

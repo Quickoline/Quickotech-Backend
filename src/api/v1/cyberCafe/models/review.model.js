@@ -35,7 +35,7 @@ const AdditionalFieldSchema = new mongoose.Schema({
   },
   fieldType: {
     type: String,
-    required: true,
+    default: 'text',
     enum: ['text', 'number', 'date', 'select', 'boolean']
   }
 }, { _id: false });
@@ -78,25 +78,16 @@ const ReviewSchema = new mongoose.Schema({
   trackingStatus: {
     type: String,
     enum: [
-      // Initial States
       'Order Placed',
       'Payment Pending',
       'Payment Completed',
-      
-      // Document Processing States
       'Documents Under Review',
       'Documents Rejected',
       'Review Completed',
       'Processing Started',
-      
-      // Approval States
       'Pending Approval',
       'Approved',
-      
-      // Cancellation States
       'Cancelled',
-      
-      // Completion States
       'Completed Successfully'
     ],
     default: 'Order Placed'
@@ -111,7 +102,18 @@ const ReviewSchema = new mongoose.Schema({
     enum: ['Enabled', 'Disabled'],
     default: 'Disabled'
   },
-  additionalFields: [AdditionalFieldSchema],
+  additionalFields: {
+    type: [AdditionalFieldSchema],
+    default: [],
+    validate: {
+      validator: function(fields) {
+        // Ensure no duplicate field names
+        const fieldNames = fields.map(f => f.fieldName);
+        return fieldNames.length === new Set(fieldNames).size;
+      },
+      message: 'Duplicate field names are not allowed'
+    }
+  },
   statusHistory: [{
     status: String,
     trackingStatus: String,
@@ -130,8 +132,9 @@ const ReviewSchema = new mongoose.Schema({
   timestamps: true
 });
 
-// Pre-save middleware to handle status history
+// Pre-save middleware to handle status history and data clearing
 ReviewSchema.pre('save', function(next) {
+  // Handle status history
   if (this.isModified('chatStatus') || this.isModified('approveStatus') || 
       this.isModified('status') || this.isModified('trackingStatus')) {
     
@@ -143,7 +146,45 @@ ReviewSchema.pre('save', function(next) {
       updatedBy: this.updatedBy || this.userId,
       updatedAt: new Date()
     });
+
+    // Clear OCR data and additional fields when order is completed or cancelled
+    if (this.status === 'completed' || this.status === 'cancelled') {
+      // Clear OCR data
+      if (this.documents && this.documents.length > 0) {
+        this.documents.forEach(doc => {
+          doc.ocrData = {};
+        });
+      }
+      // Clear additional fields
+      this.additionalFields = [];
+    }
   }
+
+  // Process additional fields if they are being modified
+  if (this.isModified('additionalFields')) {
+    // Ensure additionalFields is always an array
+    if (!Array.isArray(this.additionalFields)) {
+      if (typeof this.additionalFields === 'object') {
+        // Convert object to array format
+        this.additionalFields = Object.entries(this.additionalFields).map(([fieldName, fieldValue]) => ({
+          fieldName,
+          fieldValue,
+          fieldType: typeof fieldValue
+        }));
+      } else {
+        this.additionalFields = [];
+      }
+    }
+
+    // Validate and format each field
+    this.additionalFields = this.additionalFields.map(field => {
+      if (typeof field === 'object' && !field.fieldType) {
+        field.fieldType = typeof field.fieldValue;
+      }
+      return field;
+    });
+  }
+
   next();
 });
 

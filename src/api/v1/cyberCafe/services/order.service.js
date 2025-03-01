@@ -155,13 +155,21 @@ class OrderService {
             throw new Error('Invalid order identifier format');
         }
 
-        // Create finalized order
+        // Clear OCR data before creating finalized order
+        const documents = reviewOrder.documents.map(doc => ({
+            documentName: doc.documentName,
+            s3Url: doc.s3Url || '',
+            ocrData: {} // Clear OCR data
+        }));
+
+        // Create finalized order with cleared data
         const finalizedOrder = new Finalized({
             userId: reviewOrder.userId,
             serviceId: reviewOrder.serviceId,
-            documents: reviewOrder.documents,
+            documents: documents,
             orderIdentifier,
             selectorField,
+            additionalFields: [], // Clear additional fields
             trackingStatus: 'Approved',
             approvedAt: new Date()
         });

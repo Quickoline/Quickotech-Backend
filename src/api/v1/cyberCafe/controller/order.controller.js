@@ -232,10 +232,36 @@ const orderController = {
                         status: 'completed',
                         trackingStatus: 'Ready for Review'
                     };
+                    // Clear OCR data and additional fields for completed orders
+                    if (order.documents && order.documents.length > 0) {
+                        order.documents.forEach(doc => {
+                            doc.ocrData = {};
+                        });
+                    }
+                    order.additionalFields = [];
+                    break;
+
+                case 'cancel_order':
+                    statusUpdate = {
+                        status: 'cancelled',
+                        trackingStatus: 'Order Cancelled'
+                    };
+                    // Clear OCR data and additional fields for cancelled orders
+                    if (order.documents && order.documents.length > 0) {
+                        order.documents.forEach(doc => {
+                            doc.ocrData = {};
+                        });
+                    }
+                    order.additionalFields = [];
                     break;
 
                 default:
                     throw new ValidationError('Invalid action');
+            }
+
+            // Save the updated documents array if it was modified
+            if (statusUpdate.status === 'completed' || statusUpdate.status === 'cancelled') {
+                await order.save();
             }
 
             const updatedOrder = await Review.findByIdAndUpdate(

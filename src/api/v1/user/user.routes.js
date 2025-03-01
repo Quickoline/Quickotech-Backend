@@ -3,6 +3,7 @@ const router = express.Router();
 const userController = require('./controllers/user.controller');
 const { verifyToken } = require('../../../middleware/auth/authMiddleware');
 const { hasRole } = require('../../../middleware/auth/roleMiddleware');
+const { encryptResponse, decryptRequest } = require('../../../middleware/encryption/encryptionMiddleware');
 
 /**
  * @swagger
@@ -888,8 +889,11 @@ const { hasRole } = require('../../../middleware/auth/roleMiddleware');
  *               $ref: '#/components/schemas/Error'
  */
 
+// Apply encryption middleware to all routes
+router.use(encryptResponse);
+
 // Public routes
-router.post('/profile', (req, res, next) => {
+router.post('/profile', decryptRequest, (req, res, next) => {
     try {
         userController.createProfile(req, res);
     } catch (error) {
@@ -909,7 +913,7 @@ router.get('/profile/:userId', (req, res, next) => {
     }
 });
 
-router.put('/profile/:userId', (req, res, next) => {
+router.put('/profile/:userId', decryptRequest, (req, res, next) => {
     try {
         userController.updateProfile(req, res);
     } catch (error) {
@@ -944,7 +948,7 @@ router.put('/feedback/:userId/:feedbackId', (req, res, next) => {
 });
 
 // Contact routes
-router.post('/contact/:userId', (req, res, next) => {
+router.post('/contact/:userId', decryptRequest, (req, res, next) => {
     try {
         userController.submitContact(req, res);
     } catch (error) {
@@ -952,7 +956,7 @@ router.post('/contact/:userId', (req, res, next) => {
     }
 });
 
-router.put('/contact/:userId/:contactId', (req, res, next) => {
+router.put('/contact/:userId/:contactId', decryptRequest, (req, res, next) => {
     try {
         userController.updateContact(req, res);
     } catch (error) {
