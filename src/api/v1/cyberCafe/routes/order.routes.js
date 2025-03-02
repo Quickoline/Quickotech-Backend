@@ -318,8 +318,8 @@ router.post('/orders/:orderId/finalize', ensureRegularUser, (req, res) => {
     orderController.finalizeOrder(req, res);
 });
 
-// Update OCR data route - admin only
-router.put('/orders/:orderId/ocr', hasRole('app_admin'), (req, res) => {
+// Update OCR data route - accessible to both users and admins
+router.put('/orders/:orderId/ocr', (req, res) => {
     orderController.updateOcrData(req, res);
 });
 

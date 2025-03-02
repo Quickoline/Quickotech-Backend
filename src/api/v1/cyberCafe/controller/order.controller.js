@@ -656,6 +656,13 @@ const orderController = {
             const { orderId } = req.params;
             const { documents } = req.body;
 
+            console.log('Updating OCR data:', {
+                orderId,
+                userId: req.user.id,
+                userRole: req.user.role,
+                documentsCount: documents?.length
+            });
+
             if (!Array.isArray(documents)) {
                 throw new ValidationError('Documents must be an array');
             }
@@ -663,6 +670,11 @@ const orderController = {
             const order = await Review.findById(orderId);
             if (!order) {
                 throw new NotFoundError('Order not found');
+            }
+
+            // Check if user has permission to update this order
+            if (!req.user.role.includes('app_admin') && order.userId.toString() !== req.user.id) {
+                throw new ValidationError('Not authorized to update OCR data for this order');
             }
 
             // Update OCR data for each document
@@ -675,19 +687,24 @@ const orderController = {
                     throw new ValidationError(`Document with ID ${doc.documentId} not found in order`);
                 }
 
+                console.log(`Updating OCR data for document ${doc.documentId}`);
+
                 // Update OCR data
                 order.documents[documentIndex].ocrData = {
                     ...order.documents[documentIndex].ocrData,
                     ...doc.ocrData,
-                    lastUpdated: new Date()
+                    lastUpdated: new Date(),
+                    updatedBy: req.user.id
                 };
             }
 
             // Save the updated order
             const updatedOrder = await order.save();
+            console.log('OCR data updated successfully');
 
             res.json({
                 success: true,
+                message: 'OCR data updated successfully',
                 data: updatedOrder
             });
 
