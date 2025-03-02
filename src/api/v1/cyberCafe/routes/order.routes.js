@@ -55,7 +55,7 @@ router.use(encryptResponse);
  *           type: string
  *           format: date-time
  * 
- * /api/v1/cyberCafe/orders:
+ * /api/v1/cyber-cafe/orders:
  *   post:
  *     tags: [Orders]
  *     summary: Create a new order
@@ -100,7 +100,7 @@ router.use(encryptResponse);
  *       403:
  *         description: Not authorized
  * 
- * /api/v1/cyberCafe/orders/{orderId}:
+ * /api/v1/cyber-cafe/orders/{orderId}:
  *   get:
  *     tags: [Orders]
  *     summary: Get order by ID
@@ -147,7 +147,7 @@ router.use(encryptResponse);
  *       403:
  *         description: Not authorized
  * 
- * /api/v1/cyberCafe/orders/my-orders:
+ * /api/v1/cyber-cafe/orders/my-orders:
  *   get:
  *     tags: [Orders]
  *     summary: Get user's orders
@@ -157,7 +157,7 @@ router.use(encryptResponse);
  *       200:
  *         description: List of user's orders
  * 
- * /api/v1/cyberCafe/orders/{orderId}/ocr:
+ * /api/v1/cyber-cafe/orders/{orderId}/ocr:
  *   put:
  *     summary: Update OCR data for documents in an order
  *     tags: [Orders]
@@ -193,7 +193,7 @@ router.use(encryptResponse);
  *       404:
  *         description: Order not found
  * 
- * /api/v1/cyberCafe/orders/{orderId}/status:
+ * /api/v1/cyber-cafe/orders/{orderId}/status:
  *   patch:
  *     summary: Update order status fields
  *     tags: [Orders]
