@@ -282,12 +282,18 @@ router.get('/orders', hasRole('app_admin'), (req, res) => {
     orderController.getAllOrders(req, res);
 });
 
-router.put('/orders/:orderId', hasRole('app_admin'), (req, res) => {
+// Update order status routes - accessible to both users and admins
+router.patch('/orders/:orderId/status', (req, res) => {
     orderController.updateOrderStatus(req, res);
 });
 
-// Update order status
+// Legacy support for PUT method
 router.put('/orders/:orderId/status', (req, res) => {
+    orderController.updateOrderStatus(req, res);
+});
+
+// Admin-only route for full order updates
+router.put('/orders/:orderId', hasRole('app_admin'), (req, res) => {
     orderController.updateOrderStatus(req, res);
 });
 
@@ -312,6 +318,7 @@ router.post('/orders/:orderId/finalize', ensureRegularUser, (req, res) => {
     orderController.finalizeOrder(req, res);
 });
 
+// Update OCR data route - admin only
 router.put('/orders/:orderId/ocr', hasRole('app_admin'), (req, res) => {
     orderController.updateOcrData(req, res);
 });
