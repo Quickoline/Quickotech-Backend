@@ -174,71 +174,83 @@ const orderController = {
         }
     },
 
-    // Update order status (for admin)
+    // Update order status (for both admin and users)
     updateOrderStatus: async (req, res) => {
         try {
             const { orderId } = req.params;
-            const { action } = req.body;
+            const { status, trackingStatus, action } = req.body;
 
-            // Verify admin role
-            if (!req.user.role.includes('app_admin')) {
-                throw new ValidationError('Only admins can update order status');
-            }
+            console.log('Updating order status:', {
+                orderId,
+                requestBody: req.body,
+                userId: req.user.id,
+                userRole: req.user.role
+            });
 
             const order = await Review.findById(orderId);
             if (!order) {
                 throw new NotFoundError('Order not found');
             }
 
-            let statusUpdate = {};
-            switch (action) {
-                case 'start_processing':
-                    if (order.status !== 'pending') {
-                        throw new ValidationError('Only pending orders can be processed');
-                    }
-                    statusUpdate = {
-                        status: 'processing',
-                        trackingStatus: 'Processing Started'
-                    };
-                    break;
-
-                case 'complete_order':
-                    if (order.status !== 'processing') {
-                        throw new ValidationError('Only processing orders can be completed');
-                    }
-                    statusUpdate = {
-                        status: 'completed',
-                        trackingStatus: 'Ready for Review'
-                    };
-                    // Clear OCR data and additional fields for completed orders
-                    if (order.documents && order.documents.length > 0) {
-                        order.documents.forEach(doc => {
-                            doc.ocrData = {};
-                        });
-                    }
-                    order.additionalFields = [];
-                    break;
-
-                case 'cancel_order':
-                    statusUpdate = {
-                        status: 'cancelled',
-                        trackingStatus: 'Order Cancelled'
-                    };
-                    // Clear OCR data and additional fields for cancelled orders
-                    if (order.documents && order.documents.length > 0) {
-                        order.documents.forEach(doc => {
-                            doc.ocrData = {};
-                        });
-                    }
-                    order.additionalFields = [];
-                    break;
-
-                default:
-                    throw new ValidationError('Invalid action');
+            // Check if user has permission to update this order
+            if (!req.user.role.includes('app_admin') && order.userId.toString() !== req.user.id) {
+                throw new ValidationError('Not authorized to update this order');
             }
 
-            // Save the updated documents array if it was modified
+            let statusUpdate = {};
+
+            if (action) {
+                // Handle action-based updates
+                switch (action) {
+                    case 'start_processing':
+                        statusUpdate = {
+                            status: 'processing',
+                            trackingStatus: 'Processing Started'
+                        };
+                        break;
+                    case 'complete_order':
+                        statusUpdate = {
+                            status: 'completed',
+                            trackingStatus: 'Completed Successfully'
+                        };
+                        break;
+                    case 'cancel_order':
+                        statusUpdate = {
+                            status: 'cancelled',
+                            trackingStatus: 'Cancelled'
+                        };
+                        break;
+                    default:
+                        throw new ValidationError('Invalid action');
+                }
+            } else {
+                // Handle direct status updates
+                statusUpdate = {
+                    ...(status && { status }),
+                    ...(trackingStatus && { trackingStatus })
+                };
+
+                // Validate status if provided
+                if (status && !Review.schema.path('status').enumValues.includes(status)) {
+                    throw new ValidationError(`Invalid status: ${status}`);
+                }
+
+                // Validate trackingStatus if provided
+                if (trackingStatus && !Review.schema.path('trackingStatus').enumValues.includes(trackingStatus)) {
+                    throw new ValidationError(`Invalid tracking status: ${trackingStatus}`);
+                }
+            }
+
+            console.log('Applying status update:', statusUpdate);
+
+            // Clear OCR data and additional fields for completed or cancelled orders
             if (statusUpdate.status === 'completed' || statusUpdate.status === 'cancelled') {
+                if (order.documents && order.documents.length > 0) {
+                    order.documents.forEach(doc => {
+                        doc.ocrData = {};
+                    });
+                }
+                order.additionalFields = [];
                 await order.save();
             }
 
@@ -248,17 +260,18 @@ const orderController = {
                     $set: statusUpdate,
                     $push: { 
                         statusHistory: {
-                            status: statusUpdate.status,
-                            trackingStatus: statusUpdate.trackingStatus,
+                            ...statusUpdate,
                             updatedBy: req.user.id,
                             updatedAt: new Date()
                         }
                     }
                 },
-                { new: true }
+                { new: true, runValidators: true }
             )
             .populate('serviceId')
             .populate('userId', '-password');
+
+            console.log('Order updated successfully:', updatedOrder);
 
             res.json({
                 success: true,
