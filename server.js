@@ -24,9 +24,10 @@ const corsOptions = {
         'https://quickotech.vercel.app',
         'https://quickotech-admin.vercel.app',
         'https://quickoline.vercel.app',
+        'https://quickotech-backend.vercel.app',  // Add Vercel deployment URL
         '*'
     ],
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
     allowedHeaders: ['Content-Type', 'Authorization', 'Accept', 'Origin', 'X-Requested-With'],
     credentials: true,
     optionsSuccessStatus: 200
