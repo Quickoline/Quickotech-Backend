@@ -134,17 +134,26 @@ class UserController {
     // Contact Management
     async submitContact(req, res) {
         try {
+            console.log('Raw request body:', JSON.stringify(req.body, null, 2));
             let name, phone, email, notes;
 
             // Check if data is in encrypted format
             if (req.body.data) {
+                console.log('Found data object in request body');
                 ({ name, phone, email, notes } = req.body.data);
+                console.log('Extracted from data:', { name, phone, email, notes });
             } else {
+                console.log('Using root level request body');
                 ({ name, phone, email, notes } = req.body);
+                console.log('Extracted from root:', { name, phone, email, notes });
             }
+
+            // Log values before validation
+            console.log('Values before validation:', { name, phone, email, notes });
 
             // Validate required fields
             if (!name || !phone) {
+                console.log('Validation failed - missing required fields:', { name, phone });
                 return res.status(400).json({
                     success: false,
                     error: 'Name and phone are required fields'
@@ -153,12 +162,15 @@ class UserController {
 
             // If phone is in encrypted format, extract the value
             if (typeof phone === 'object' && phone.data) {
+                console.log('Phone is in object format:', phone);
                 phone = phone.data;
+                console.log('Extracted phone value:', phone);
             }
 
             // Validate phone format (simple validation for +91 followed by 10 digits)
             const phoneRegex = /^\+91[0-9]{10}$/;
             if (!phoneRegex.test(phone)) {
+                console.log('Phone validation failed:', phone);
                 return res.status(400).json({
                     success: false,
                     error: 'Phone number must be in format: +91XXXXXXXXXX'
@@ -167,19 +179,24 @@ class UserController {
 
             // If email is in encrypted format, extract the value
             if (email && typeof email === 'object' && email.data) {
+                console.log('Email is in object format:', email);
                 email = email.data;
+                console.log('Extracted email value:', email);
             }
 
             // Validate email if provided
             if (email) {
                 const emailRegex = /^\S+@\S+\.\S+$/;
                 if (!emailRegex.test(email)) {
+                    console.log('Email validation failed:', email);
                     return res.status(400).json({
                         success: false,
                         error: 'Invalid email format'
                     });
                 }
             }
+
+            console.log('Final data to be saved:', { name, phone, email, notes });
 
             const result = await UserService.submitContact(
                 req.params.userId,
@@ -190,6 +207,7 @@ class UserController {
                 data: result
             });
         } catch (error) {
+            console.error('Error in submitContact:', error);
             res.status(400).json({
                 success: false,
                 error: error.message
