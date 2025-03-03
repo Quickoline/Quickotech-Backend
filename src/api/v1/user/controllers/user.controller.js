@@ -134,14 +134,26 @@ class UserController {
     // Contact Management
     async submitContact(req, res) {
         try {
-            const { name, phone, email, notes } = req.body;
-            
+            let name, phone, email, notes;
+
+            // Check if data is in encrypted format
+            if (req.body.data) {
+                ({ name, phone, email, notes } = req.body.data);
+            } else {
+                ({ name, phone, email, notes } = req.body);
+            }
+
             // Validate required fields
             if (!name || !phone) {
                 return res.status(400).json({
                     success: false,
                     error: 'Name and phone are required fields'
                 });
+            }
+
+            // If phone is in encrypted format, extract the value
+            if (typeof phone === 'object' && phone.data) {
+                phone = phone.data;
             }
 
             // Validate phone format (simple validation for +91 followed by 10 digits)
@@ -151,6 +163,11 @@ class UserController {
                     success: false,
                     error: 'Phone number must be in format: +91XXXXXXXXXX'
                 });
+            }
+
+            // If email is in encrypted format, extract the value
+            if (email && typeof email === 'object' && email.data) {
+                email = email.data;
             }
 
             // Validate email if provided
