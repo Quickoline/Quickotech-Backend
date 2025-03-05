@@ -3,7 +3,7 @@ const router = express.Router();
 const orderController = require('../controller/order.controller');
 const { verifyToken } = require('../../../../middleware/auth/authMiddleware');
 const { hasRole } = require('../../../../middleware/auth/roleMiddleware');
-const { encryptResponse, decryptRequest } = require('../../../../middleware/encryption/encryptionMiddleware');
+const { encryptResponse, decryptRequest, validateEncryptedRequest } = require('../../../../middleware/encryption/encryptionMiddleware');
 const multer = require('multer');
 
 // Configure multer for handling file uploads
@@ -249,7 +249,7 @@ router.use(encryptResponse);
 router.use(verifyToken);
 
 // Create order route with file upload
-router.post('/orders', upload.any(), (req, res) => {
+router.post('/orders', validateEncryptedRequest, decryptRequest, upload.any(), (req, res) => {
     orderController.createOrder(req, res);
 });
 
@@ -278,22 +278,22 @@ router.get('/orders/my-orders', (req, res) => {
 });
 
 // Admin routes
-router.get('/orders', hasRole('app_admin'), (req, res) => {
+router.get('/orders', hasRole(['admin']), (req, res) => {
     orderController.getAllOrders(req, res);
 });
 
 // Update order status routes - accessible to both users and admins
-router.patch('/orders/:orderId/status', (req, res) => {
+router.patch('/orders/:orderId/status', validateEncryptedRequest, decryptRequest, (req, res) => {
     orderController.updateOrderStatus(req, res);
 });
 
 // Legacy support for PUT method
-router.put('/orders/:orderId/status', (req, res) => {
+router.put('/orders/:orderId/status', validateEncryptedRequest, decryptRequest, (req, res) => {
     orderController.updateOrderStatus(req, res);
 });
 
 // Admin-only route for full order updates
-router.put('/orders/:orderId', hasRole('app_admin'), (req, res) => {
+router.put('/orders/:orderId', hasRole('app_admin'), validateEncryptedRequest, decryptRequest, (req, res) => {
     orderController.updateOrderStatus(req, res);
 });
 
@@ -318,8 +318,8 @@ router.post('/orders/:orderId/finalize', ensureRegularUser, (req, res) => {
     orderController.finalizeOrder(req, res);
 });
 
-// Update OCR data route - accessible to both users and admins
-router.put('/orders/:orderId/ocr', (req, res) => {
+// Update OCR data route
+router.put('/orders/:orderId/ocr', validateEncryptedRequest, decryptRequest, (req, res) => {
     orderController.updateOcrData(req, res);
 });
 

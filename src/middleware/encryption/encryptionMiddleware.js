@@ -17,19 +17,10 @@ const ORDER_SENSITIVE_FIELDS = [
 const encryptResponse = (req, res, next) => {
     const originalJson = res.json;
     res.json = function (data) {
-        if (data && data.success && data.data) {
-            const route = req.baseUrl + req.path;
-            const sensitiveFields = route.includes('/users') 
-                ? USER_SENSITIVE_FIELDS 
-                : ORDER_SENSITIVE_FIELDS;
-
-            if (Array.isArray(data.data)) {
-                data.data = data.data.map(item => 
-                    EncryptionService.encryptSensitiveData(item, sensitiveFields)
-                );
-            } else {
-                data.data = EncryptionService.encryptSensitiveData(data.data, sensitiveFields);
-            }
+        if (data && data.success) {
+            // Encrypt the entire data object
+            const encryptedResponse = EncryptionService.encrypt(data);
+            return originalJson.call(this, encryptedResponse);
         }
         return originalJson.call(this, data);
     };
@@ -37,13 +28,35 @@ const encryptResponse = (req, res, next) => {
 };
 
 const decryptRequest = (req, res, next) => {
-    if (req.body) {
-        const route = req.baseUrl + req.path;
-        const sensitiveFields = route.includes('/users') 
-            ? USER_SENSITIVE_FIELDS 
-            : ORDER_SENSITIVE_FIELDS;
+    try {
+        if (req.body && req.body.data) {
+            // Decrypt the request body
+            const decryptedData = EncryptionService.decrypt(req.body);
+            if (decryptedData) {
+                req.body = decryptedData;
+            } else {
+                throw new Error('Failed to decrypt request data');
+            }
+        }
+        next();
+    } catch (error) {
+        console.error('Decryption middleware error:', error);
+        res.status(400).json({
+            success: false,
+            error: 'Invalid encrypted data format'
+        });
+    }
+};
 
-        req.body = EncryptionService.decryptSensitiveData(req.body, sensitiveFields);
+// Validate encrypted request format
+const validateEncryptedRequest = (req, res, next) => {
+    if (req.headers['content-type'] === 'application/json' && req.body) {
+        if (!req.body.data || typeof req.body.data !== 'string') {
+            return res.status(400).json({
+                success: false,
+                error: 'Invalid request format. Expected encrypted data.'
+            });
+        }
     }
     next();
 };
@@ -51,6 +64,7 @@ const decryptRequest = (req, res, next) => {
 module.exports = {
     encryptResponse,
     decryptRequest,
+    validateEncryptedRequest,
     USER_SENSITIVE_FIELDS,
     ORDER_SENSITIVE_FIELDS
 }; 

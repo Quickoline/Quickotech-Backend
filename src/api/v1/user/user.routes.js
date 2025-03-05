@@ -3,7 +3,7 @@ const router = express.Router();
 const userController = require('./controllers/user.controller');
 const { verifyToken } = require('../../../middleware/auth/authMiddleware');
 const { hasRole } = require('../../../middleware/auth/roleMiddleware');
-const { encryptResponse, decryptRequest } = require('../../../middleware/encryption/encryptionMiddleware');
+const { encryptResponse, decryptRequest, validateEncryptedRequest } = require('../../../middleware/encryption/encryptionMiddleware');
 
 /**
  * @swagger
@@ -893,7 +893,7 @@ const { encryptResponse, decryptRequest } = require('../../../middleware/encrypt
 router.use(encryptResponse);
 
 // Public routes
-router.post('/profile', decryptRequest, (req, res, next) => {
+router.post('/profile', validateEncryptedRequest, decryptRequest, (req, res, next) => {
     try {
         userController.createProfile(req, res);
     } catch (error) {
@@ -913,7 +913,7 @@ router.get('/profile/:userId', (req, res, next) => {
     }
 });
 
-router.put('/profile/:userId', decryptRequest, (req, res, next) => {
+router.put('/profile/:userId', validateEncryptedRequest, decryptRequest, (req, res, next) => {
     try {
         userController.updateProfile(req, res);
     } catch (error) {
@@ -922,7 +922,7 @@ router.put('/profile/:userId', decryptRequest, (req, res, next) => {
 });
 
 // Referral routes
-router.post('/referral/:userId', (req, res, next) => {
+router.post('/referral/:userId', validateEncryptedRequest, decryptRequest, (req, res, next) => {
     try {
         userController.applyReferralCode(req, res);
     } catch (error) {
@@ -931,7 +931,7 @@ router.post('/referral/:userId', (req, res, next) => {
 });
 
 // Feedback routes
-router.post('/feedback/:userId', (req, res, next) => {
+router.post('/feedback/:userId', validateEncryptedRequest, decryptRequest, (req, res, next) => {
     try {
         userController.submitFeedback(req, res);
     } catch (error) {
@@ -939,7 +939,7 @@ router.post('/feedback/:userId', (req, res, next) => {
     }
 });
 
-router.put('/feedback/:userId/:feedbackId', (req, res, next) => {
+router.put('/feedback/:userId/:feedbackId', validateEncryptedRequest, decryptRequest, (req, res, next) => {
     try {
         userController.updateFeedback(req, res);
     } catch (error) {
@@ -948,7 +948,7 @@ router.put('/feedback/:userId/:feedbackId', (req, res, next) => {
 });
 
 // Contact routes
-router.post('/contact/:userId', decryptRequest, (req, res, next) => {
+router.post('/contact/:userId', validateEncryptedRequest, decryptRequest, (req, res, next) => {
     try {
         userController.submitContact(req, res);
     } catch (error) {
@@ -956,7 +956,7 @@ router.post('/contact/:userId', decryptRequest, (req, res, next) => {
     }
 });
 
-router.put('/contact/:userId/:contactId', decryptRequest, (req, res, next) => {
+router.put('/contact/:userId/:contactId', validateEncryptedRequest, decryptRequest, (req, res, next) => {
     try {
         userController.updateContact(req, res);
     } catch (error) {

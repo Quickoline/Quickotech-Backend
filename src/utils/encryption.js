@@ -2,7 +2,8 @@ const crypto = require('crypto');
 
 class EncryptionService {
     static #encryptionKey = null;
-    static #iv_length = 16; // For AES, this is always 16
+    static #AUTH_TAG_LENGTH = 16;
+    static #IV_LENGTH = 12; // GCM recommended IV length
 
     static initialize() {
         if (!process.env.ENCRYPTION_KEY) {
@@ -34,39 +35,61 @@ class EncryptionService {
         if (!data) return null;
         
         try {
-            const iv = crypto.randomBytes(this.#iv_length);
-            const cipher = crypto.createCipheriv('aes-256-cbc', this.#encryptionKey, iv);
+            // Generate a random IV
+            const iv = crypto.randomBytes(this.#IV_LENGTH);
             
-            let encrypted = cipher.update(JSON.stringify(data));
-            encrypted = Buffer.concat([encrypted, cipher.final()]);
+            // Create cipher with GCM mode
+            const cipher = crypto.createCipheriv('aes-256-gcm', this.#encryptionKey, iv);
             
-            return `${iv.toString('hex')}:${encrypted.toString('hex')}`;
+            // Encrypt the data
+            let encrypted = cipher.update(JSON.stringify(data), 'utf8', 'base64');
+            encrypted += cipher.final('base64');
+            
+            // Get the auth tag
+            const authTag = cipher.getAuthTag();
+            
+            // Combine IV, encrypted data, and auth tag
+            const result = {
+                iv: iv.toString('base64'),
+                data: encrypted,
+                tag: authTag.toString('base64')
+            };
+
+            // Return in the format expected by frontend
+            return {
+                data: Buffer.from(JSON.stringify(result)).toString('base64')
+            };
         } catch (error) {
             console.error('Encryption error:', error);
             return null;
         }
     }
 
-    static decrypt(text) {
+    static decrypt(encryptedData) {
         if (!this.#encryptionKey) {
             this.initialize();
         }
 
-        if (!text) return null;
+        if (!encryptedData || !encryptedData.data) return null;
         
         try {
-            const [ivHex, encryptedHex] = text.split(':');
-            if (!ivHex || !encryptedHex) return null;
-
-            const iv = Buffer.from(ivHex, 'hex');
-            const encryptedText = Buffer.from(encryptedHex, 'hex');
+            // Parse the encrypted data
+            const parsed = JSON.parse(Buffer.from(encryptedData.data, 'base64').toString());
             
-            const decipher = crypto.createDecipheriv('aes-256-cbc', this.#encryptionKey, iv);
+            // Extract components
+            const iv = Buffer.from(parsed.iv, 'base64');
+            const tag = Buffer.from(parsed.tag, 'base64');
+            const encrypted = parsed.data;
             
-            let decrypted = decipher.update(encryptedText);
-            decrypted = Buffer.concat([decrypted, decipher.final()]);
+            // Create decipher
+            const decipher = crypto.createDecipheriv('aes-256-gcm', this.#encryptionKey, iv);
+            decipher.setAuthTag(tag);
             
-            return JSON.parse(decrypted.toString());
+            // Decrypt
+            let decrypted = decipher.update(encrypted, 'base64', 'utf8');
+            decrypted += decipher.final('utf8');
+            
+            return JSON.parse(decrypted);
         } catch (error) {
             console.error('Decryption error:', error);
             return null;

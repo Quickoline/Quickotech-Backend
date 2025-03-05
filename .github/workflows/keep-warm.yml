@@ -4,17 +4,27 @@ on:
   schedule:
     - cron: '*/5 * * * *'  # Run every 5 minutes (minimum interval supported by GitHub Actions)
   workflow_dispatch:  # Allows manual triggering
+  push:
+    branches: [ main, master ]  # Also run on pushes to main/master to verify it works
 
 jobs:
   warmup:
     runs-on: ubuntu-latest
-    timeout-minutes: 1  # Limit execution time to 1 minute
     permissions:
       contents: read
+      actions: write
     concurrency:
       group: ${{ github.workflow }}-${{ github.ref }}
       cancel-in-progress: true  # Cancel running job if new one starts
+
     steps:
+      - name: Debug Trigger
+        run: |
+          echo "Event that triggered the workflow: ${{ github.event_name }}"
+          echo "Workflow triggered at: $(date -u)"
+          echo "GitHub ref: ${{ github.ref }}"
+          echo "GitHub branch: ${GITHUB_REF#refs/heads/}"
+
       - name: Checkout code
         uses: actions/checkout@v3
         with:
