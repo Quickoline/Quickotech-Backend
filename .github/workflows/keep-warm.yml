@@ -2,7 +2,7 @@ name: Keep Server Warm
 
 on:
   schedule:
-    - cron: '*/3 * * * *'  # Run every 3 minutes to ensure we don't miss the 15-minute window
+    - cron: '*/5 * * * *'  # Run every 5 minutes (minimum interval supported by GitHub Actions)
   workflow_dispatch:  # Allows manual triggering
 
 jobs:
